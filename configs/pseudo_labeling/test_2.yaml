@@ -18,8 +18,8 @@ DATASETS:
   PROPOSAL_FILES_TEST: []
   PROPOSAL_FILES_TRAIN: []
   TEST:
-  - jersey_royal_val
-  #- jersey_royal_test
+  #- jersey_royal_val
+  - jersey_royal_test
   TRAIN:
   - jersey_royal_train
 
@@ -288,11 +288,11 @@ MODEL:
     NAME: SemSegFPNHead
     NORM: GN
     NUM_CLASSES: 54
-  WEIGHTS: outputs/DEV_TEST_4/best_model.pth
+  WEIGHTS: outputs/Pseudo_DEV_2/best_model.pth
 # =============================================================================
 # OUTPUT DIR
 # =============================================================================
-OUTPUT_DIR: outputs/Pseudo_Test
+OUTPUT_DIR: outputs/Pseudo_DEV_IGNORE
 
 # =============================================================================
 # SEED

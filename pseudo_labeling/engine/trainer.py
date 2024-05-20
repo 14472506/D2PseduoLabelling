@@ -315,9 +315,10 @@ class PseudoTrainer(DefaultTrainer):
                 # get volumetric symetry metric
                 higher_volume = mask[mask >= 0.5] - 0.5
                 lower_volume = np.minimum(mask, 0.5)
-                vol_sym = conf_score * (higher_volume.sum()/lower_volume.sum())**2
+                vol_sym = conf_score * (higher_volume.sum()/lower_volume.sum())**2  
 
-                if vol_sym < 0.5:
+                #print(vol_sym)
+                if vol_sym < 0.6:
                     continue
                 
                 mf_pred_scores.append(cf_pred_scores[i])
