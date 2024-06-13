@@ -10,8 +10,8 @@ def register_unlabeled():
     Details
     """
     register_coco_instances("unlabeled_data", {},
-                            "datasets/unlabeled_dataset/unlabeled.json",
-                            "datasets/unlabeled_dataset"
+                            "datasets/jr_v5_unlabeled_data/unlabeled.json",
+                            "datasets/jr_v5_unlabeled_data"
                             )
 
 def register_jersey_train():
@@ -19,21 +19,21 @@ def register_jersey_train():
     Detials
     """
     register_coco_instances("jersey_royal_train", {}, 
-                                "datasets/jersey_dataset_v4/train/train.json",
-                                "datasets/jersey_dataset_v4/train")
+                                "datasets/jr_ds_v5/train/train.json",
+                                "datasets/jr_ds_v5/train")
     
 def register_jersey_val():
     """
     Detials
     """
     register_coco_instances("jersey_royal_val", {}, 
-                                "datasets/jersey_dataset_v4/val/val.json",
-                                "datasets/jersey_dataset_v4/val")
+                                "datasets/jr_ds_v5/val/val.json",
+                                "datasets/jr_ds_v5/val/val")
 
 def register_jersey_test():
     """
     Detials
     """
     register_coco_instances("jersey_royal_test", {}, 
-                                "datasets/jersey_dataset_v4/test/test.json",
-                                "datasets/jersey_dataset_v4/test")
+                                "datasets/jr_ds_v5/test/test.json",
+                                "datasets/jr_ds_v5/test")
