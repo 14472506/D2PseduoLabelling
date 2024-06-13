@@ -5,7 +5,7 @@ CUDNN_BENCHMARK: false
 DATALOADER:
   ASPECT_RATIO_GROUPING: true
   FILTER_EMPTY_ANNOTATIONS: true
-  NUM_WORKERS: 2
+  NUM_WORKERS: 0
   REPEAT_THRESHOLD: 0.0
   SAMPLER_TRAIN: TrainingSampler
   
@@ -288,11 +288,22 @@ MODEL:
     NAME: SemSegFPNHead
     NORM: GN
     NUM_CLASSES: 54
-  WEIGHTS: outputs/Pseudo_DEV_2/best_model.pth
+  WEIGHTS: BASE_PS_best_model.pth
+# =============================================================================
+# PSEUDO LABELING
+# =============================================================================
+PSEUDO_LABELING:
+  DATASET:
+  - unlabeled_data
+  BURN_IN_ITERS: 0
+  PSEUDO_UPDATE_FREQ: 20 
+  EMA_KEEP_RATE: 0.988
+  METRIC_THRESHOLD: 0.5
+
 # =============================================================================
 # OUTPUT DIR
 # =============================================================================
-OUTPUT_DIR: outputs/Pseudo_DEV_IGNORE
+OUTPUT_DIR: outputs/DEV_DELETE_THIS
 
 # =============================================================================
 # SEED
@@ -306,10 +317,10 @@ SOLVER:
   OPTIMIZER: ADAM
   AMP:
     ENABLED: false
-  BASE_LR: 5.0e-05
+  BASE_LR: 5.0e-06
   BASE_LR_END: 0.0
   BIAS_LR_FACTOR: 1.0
-  CHECKPOINT_PERIOD: 100000
+  CHECKPOINT_PERIOD: 50000
   CLIP_GRADIENTS:
     CLIP_TYPE: value
     CLIP_VALUE: 1.0
@@ -318,14 +329,14 @@ SOLVER:
   GAMMA: 0.1
   IMS_PER_BATCH: 1
   LR_SCHEDULER_NAME: WarmupMultiStepLR
-  MAX_ITER: 63600
+  MAX_ITER: 63600 #127200
   MOMENTUM: 0.9
   NESTEROV: false
   NUM_DECAYS: 3
   REFERENCE_WORLD_SIZE: 0
   RESCALE_INTERVAL: false
   STEPS:
-  - 50880
+  - 200000
   - 250000
   WARMUP_FACTOR: 0.001
   WARMUP_ITERS: 0                       # Default 1000 seems to hinder initial training?

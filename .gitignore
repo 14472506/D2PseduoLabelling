@@ -2,3 +2,6 @@
 /outputs
 /results_store
 scratch_pad
+__pycache__/
+*.cython-38.pyc
+*.pth
