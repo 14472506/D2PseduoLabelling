@@ -1,64 +1,86 @@
 """
-Detials
-"""
-# Baseline Detectron2 Imports
-import detectron2.utils.comm as comm # What does this do 
-from detectron2.checkpoint import DetectionCheckpointer # is the method for saving models and data around the model
-from detectron2.config import get_cfg # is the yacs config structure
-from detectron2.engine import default_argument_parser, default_setup, launch # are the defaul args parser for detectron2, the default setup out of the box and a function that handles the launching of the training process 
-from detectron2 import model_zoo
+        Title: pseudo_labeling_train_net.py
 
-# For further model development other stuff goes here
-# get the traininer
+  Description: Script uses Detectron2 to train carry logit symmetry, mask based pseduo labeling for 
+               instance segmentation architectures.
+
+        Notes:  - Currently under development. 
+                - only contrains mask r-cnn as instance sementation architecuture. more need to be added
+
+  Last Edited: Bradley Hurst (12/06/2024)
+"""
+# === imports === #
+# base
+import os
+import argparse
+# third party
+import detectron2.utils.comm as comm
+from detectron2.checkpoint import DetectionCheckpointer
+from detectron2.config import get_cfg
+from detectron2.engine import default_argument_parser, default_setup, launch
+from detectron2 import model_zoo
+# local
 from pseudo_labeling.engine.trainer import PseudoTrainer
 from pseudo_labeling.config import add_pseudo_config
-
-# This is the hacky way to register architectures that was talked about in ubteacher
 from pseudo_labeling.modelling.my_rcnn import MyGeneralizedRCNN
 
-# functions
+# === functions === #
+def parse_args():
+    """ 
+    Argument parser adding gpu specification functionality to Detectron2's 
+    defualt_argument_parse function
+    """
+    parser = default_argument_parser()
+    parser.add_argument('--use_gpu', type=str, default='0', help='GPU id to use')
+    return parser.parse_args()
+
+def set_gpu(gpu_id):
+    """ Specifies GPU for use """
+    os.environ['CUDA_VISIBLE_DEVICES'] = gpu_id
+   
 def setup(args):
+    """ Initialise config and ammend based on command line arguments """
     cfg = get_cfg()
+    # adding argments to base config to accomodate pseudo labeling
     add_pseudo_config(cfg)
-    cfg.merge_from_file(args.config_file) # merges baseline and added files together
-    cfg.merge_from_list(args.opts) # merges additional changes from args together
-    cfg.freeze() # fixes config at current state
-    default_setup(cfg, args) 
+    cfg.merge_from_file(args.config_file)
+    cfg.merge_from_list(args.opts)
+    cfg.freeze()
+    default_setup(cfg, args)
     return cfg
 
 def main(args):
-    # get config
-    cfg = setup(args) # get the config in running order based on setup function
-    # get trainer
+    """ 
+    Execute training with logit mask volume based pseudo labeling based of
+    the provided config file and command line arguments
+    """
+    # get config and trainer
+    cfg = setup(args)
     Trainer = PseudoTrainer
-    # if evaluating model based on cfg
+
+    # if eval only carry out model evaluation based on config - no training
     if args.eval_only:
-        # get model
         model = Trainer.build_model(cfg)
-        # get checkpoint
         DetectionCheckpointer(model, save_dir=cfg.OUTPUT_DIR).resume_or_load(
             cfg.MODEL.WEIGHTS, resume=args.resume
         )
-        # get results
         res = Trainer.test(cfg, model)
-        # return results
         return res
-    
-    # otherwise training model based on cfg
+
+    # train model based of config and command line arguments
     trainer = Trainer(cfg)
     trainer.resume_or_load(resume=args.resume)
     return trainer.train()
 
-# execution
+# === Execution === #
 if __name__ == "__main__":
-    
-    # getting args currently fine, may need additional options see Detectron2 for more
-    args = default_argument_parser().parse_args()
-    
-    # printing args
+    """ Execution of logit mask volume based pseudo labeling training or evaluation """
+    # get command line arguments, setup gpu allocation and report command line arguments
+    args = parse_args()
+    set_gpu(args.use_gpu)
     print("Command Line Args:", args)
 
-    # structure for launch
+    # use detectron2 launcher to begin training or evaluation
     launch(
         main,
         args.num_gpus,

@@ -318,7 +318,7 @@ class PseudoTrainer(DefaultTrainer):
                 vol_sym = conf_score * (higher_volume.sum()/lower_volume.sum())**2  
 
                 #print(vol_sym)
-                if vol_sym < 0.6:
+                if vol_sym < self.cfg.PSEUDO_LABELING.METRIC_THRESHOLD:
                     continue
                 
                 mf_pred_scores.append(cf_pred_scores[i])
