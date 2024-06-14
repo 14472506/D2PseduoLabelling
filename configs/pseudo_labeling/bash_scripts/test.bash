@@ -13,4 +13,6 @@ echo "OUTPUT DIR: $OUTPUT_DIR"
 
 
 # Run the Python training script with the specified arguments
-python pseudo_labeling_train_net.py --use_gpu $USE_GPU --config $CONFIG_FILE OUTPUT_DIR $OUTPUT_DIR 
+python pseudo_labeling_train_net.py --use_gpu $USE_GPU --config $CONFIG_FILE OUTPUT_DIR $OUTPUT_DIR_1 
+python pseudo_labeling_train_net.py --use_gpu $USE_GPU --config $CONFIG_FILE OUTPUT_DIR $OUTPUT_DIR_2 
+python pseudo_labeling_train_net.py --use_gpu $USE_GPU --config $CONFIG_FILE OUTPUT_DIR $OUTPUT_DIR_3 

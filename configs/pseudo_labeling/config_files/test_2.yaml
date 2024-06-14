@@ -18,8 +18,8 @@ DATASETS:
   PROPOSAL_FILES_TEST: []
   PROPOSAL_FILES_TRAIN: []
   TEST:
-  #- jersey_royal_val
-  - jersey_royal_test
+  - jersey_royal_val
+  #- jersey_royal_test
   TRAIN:
   - jersey_royal_train
 
@@ -295,7 +295,7 @@ MODEL:
 PSEUDO_LABELING:
   DATASET:
   - unlabeled_data
-  BURN_IN_ITERS: 0
+  BURN_IN_ITERS: 
   PSEUDO_UPDATE_FREQ: 20 
   EMA_KEEP_RATE: 0.988
   METRIC_THRESHOLD: 0.5
@@ -317,7 +317,7 @@ SOLVER:
   OPTIMIZER: ADAM
   AMP:
     ENABLED: false
-  BASE_LR: 5.0e-06
+  BASE_LR: 5.0e-05
   BASE_LR_END: 0.0
   BIAS_LR_FACTOR: 1.0
   CHECKPOINT_PERIOD: 50000
@@ -329,7 +329,7 @@ SOLVER:
   GAMMA: 0.1
   IMS_PER_BATCH: 1
   LR_SCHEDULER_NAME: WarmupMultiStepLR
-  MAX_ITER: 63600 #127200
+  MAX_ITER: 144100 #127200
   MOMENTUM: 0.9
   NESTEROV: false
   NUM_DECAYS: 3
@@ -354,17 +354,17 @@ TEST:
     FLIP: true
     MAX_SIZE: 1300
     MIN_SIZES:
-    #- 400
-    #- 500
-    #- 600
-    #- 700
+    - 400
+    - 500
+    - 600
+    - 700
     - 800
-    #- 900
-    #- 1000
-    #- 1100
-    #- 1200
+    - 900
+    - 1000
+    - 1100
+    - 1200
   DETECTIONS_PER_IMAGE: 100
-  EVAL_PERIOD: 159
+  EVAL_PERIOD: 1441
   EXPECTED_RESULTS: []
   KEYPOINT_OKS_SIGMAS: []
   PRECISE_BN:

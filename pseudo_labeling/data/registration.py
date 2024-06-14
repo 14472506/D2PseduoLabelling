@@ -28,7 +28,7 @@ def register_jersey_val():
     """
     register_coco_instances("jersey_royal_val", {}, 
                                 "datasets/jr_ds_v5/val/val.json",
-                                "datasets/jr_ds_v5/val/val")
+                                "datasets/jr_ds_v5/val")
 
 def register_jersey_test():
     """
