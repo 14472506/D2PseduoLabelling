@@ -5,3 +5,4 @@ scratch_pad
 __pycache__/
 *.cython-38.pyc
 *.pth
+*.tar

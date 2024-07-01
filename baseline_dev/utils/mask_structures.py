@@ -9,8 +9,7 @@ from torch import device
 
 from detectron2.layers.roi_align import ROIAlign
 from detectron2.utils.memory import retry_if_cuda_oom
-from detectron2.layers.mask_ops import paste_masks_in_image, _paste_masks_tensor_shape
-
+from detectron2.layers.mask_ops import paste_masks_in_image
 from detectron2.structures.boxes import Boxes
 
 

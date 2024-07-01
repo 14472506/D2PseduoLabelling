@@ -258,7 +258,7 @@ class PseudoTrainer(DefaultTrainer):
 
         self.optimizer.zero_grad()
         losses.backward()
-        self.after_backward()
+        #self.after_backward()
         self.optimizer.step()
 
     # =========================================================================
@@ -418,17 +418,17 @@ class PseudoSimpleTrainer(SimpleTrainer):
         model,
         data_loader,
         optimizer,
-        gather_metric_period=1,
-        zero_grad_before_forward=False,
-        async_write_metrics=False,
+        #gather_metric_period=1,
+        #zero_grad_before_forward=False,
+        #async_write_metrics=False,
     ):
         super().__init__(
             model,
             data_loader,
             optimizer,
-            gather_metric_period,
-            zero_grad_before_forward,
-            async_write_metrics,
+            #gather_metric_period,
+            #zero_grad_before_forward,
+            #async_write_metrics,
         )
 
         self._labeled_data_loader_iter_obj = None
@@ -446,4 +446,4 @@ class PseudoSimpleTrainer(SimpleTrainer):
         # only create the data loader iterator when it is used
         if self._unlabeled_data_loader_iter_obj is None:
             self._unlabeled_data_loader_iter_obj = iter(self.data_loader[1])
-        return self._unlabeled_data_loader_iter_obj   
+        return self._unlabeled_data_loader_iter_obj
