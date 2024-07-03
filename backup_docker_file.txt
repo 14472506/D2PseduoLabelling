@@ -21,11 +21,6 @@ RUN conda create --name detectron2 python=3.9 -y && \
     conda run -n detectron2 pip install pillow==9.5.0 && \
     conda run -n detectron2 pip install opencv-python-headless
 
-# Create the Ultralytics envrionment and install dependencies
-RUN conda create --name ultralytics python=3.9 -y && \
-    conda run -n ultralytics pip install torch torchvision && \
-    conda run -n ultralytics pip install ultralytics
-
 # Set the working directory inside the container
 WORKDIR /workspace
 
