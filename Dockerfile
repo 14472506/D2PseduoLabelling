@@ -1,6 +1,15 @@
 # Use the official Anaconda image as a base
 FROM continuumio/anaconda3
 
+# Set the working directory inside the container
+WORKDIR /workspace
+
+# Install kmod non-interactively
+RUN apt-get update && apt-get install -y kmod
+
+RUN wget https://us.download.nvidia.com/XFree86/Linux-x86_64/535.171.04/NVIDIA-Linux-x86_64-535.171.04.run
+RUN sh ./NVIDIA-Linux-x86_64-535.171.04.run -s --no-kernel-module
+
 # Set environment variables
 ENV PATH /opt/conda/bin:$PATH
 
@@ -25,9 +34,6 @@ RUN conda create --name detectron2 python=3.9 -y && \
 RUN conda create --name ultralytics python=3.9 -y && \
     conda run -n ultralytics pip install torch torchvision && \
     conda run -n ultralytics pip install ultralytics
-
-# Set the working directory inside the container
-WORKDIR /workspace
 
 # Set the default command to activate the conda environment
 CMD ["bash", "-c", "source activate detectron2 && bash"]
