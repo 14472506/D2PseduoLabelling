@@ -78,7 +78,7 @@ MODEL:
   BACKBONE:
     FREEZE_AT: 0                        # default is 2, works with 0
     NAME: build_resnet_fpn_backbone
-  DEVICE: cuda
+  DEVICE: cpu
   FPN:
     FUSE_TYPE: sum
     IN_FEATURES:
@@ -288,7 +288,7 @@ MODEL:
     NAME: SemSegFPNHead
     NORM: GN
     NUM_CLASSES: 54
-  WEIGHTS: BASE_PS_best_model.pth
+  WEIGHTS: outputs/baseline/TEST_1/best_model.pth
 # =============================================================================
 # PSEUDO LABELING
 # =============================================================================
@@ -299,6 +299,7 @@ PSEUDO_LABELING:
   PSEUDO_UPDATE_FREQ: 320 
   EMA_KEEP_RATE: 0.999
   METRIC_THRESHOLD: 0.5
+  CLASS_CONFIDENCE_THRESHOLD: 0.5
 
 # =============================================================================
 # OUTPUT DIR

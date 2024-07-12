@@ -16,6 +16,7 @@ USE_GPU=0
 ITERS=70350
 BURN_IN_ITERS=0
 METRIC_THRESHOLD=0.30
+CLASS_THRESHOLD = 0.5
 
 # Define lists of weights and output directories
 TRAIN_WEIGHTS=(
@@ -77,7 +78,8 @@ for i in "${!WEIGHTS[@]}"; do
             SOLVER.MAX_ITER $ITERS \
             DATASETS.TEST "$DATASET" \
             PSEUDO_LABELING.BURN_IN_ITERS $BURN_IN_ITERS \
-            PSEUDO_LABELING.METRIC_THRESHOLD $METRIC_THRESHOLD
+            PSEUDO_LABELING.METRIC_THRESHOLD $METRIC_THRESHOLD\
+            PSEUDO_LABELING.CLASS_CONFIDENCE_THRESHOLD $CLASS_THRESHOLD
     elif [ "$MODE" = "test" ]; then
         echo "Testing with weight: $WEIGHT, output directory: $OUTPUT_DIR"
         python pseudo_labeling_train_net.py --use_gpu $USE_GPU --config $CONFIG_FILE  \
@@ -87,7 +89,8 @@ for i in "${!WEIGHTS[@]}"; do
             SOLVER.MAX_ITER $ITERS \
             DATASETS.TEST "$DATASET" \
             PSEUDO_LABELING.BURN_IN_ITERS $BURN_IN_ITERS \
-            PSEUDO_LABELING.METRIC_THRESHOLD $METRIC_THRESHOLD
+            PSEUDO_LABELING.METRIC_THRESHOLD $METRIC_THRESHOLD\
+            PSEUDO_LABELING.CLASS_CONFIDENCE_THRESHOLD $CLASS_THRESHOLD
     else
         echo "Unknown mode: $MODE. Use 'train' or 'test'. Exiting."
         exit 1

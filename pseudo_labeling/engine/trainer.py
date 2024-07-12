@@ -296,7 +296,7 @@ class PseudoTrainer(DefaultTrainer):
                 cf_pred_classes = []
 
                 for j in range(len(pred_scores)):
-                    if pred_scores[j] < 0.5:
+                    if pred_scores[j] < self.cfg.PSEUDO_LABELING.CLASS_CONFIDENCE_THRESHOLD:
                         continue
                     cf_pred_scores.append(pred_scores[j])
                     cf_pred_masks.append(pred_masks[j])

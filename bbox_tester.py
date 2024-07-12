@@ -19,7 +19,7 @@ def register_dataset():
 
 def setup_predictor():
     cfg = get_cfg()
-    add_pseudo_config()
+    add_pseudo_config(cfg)
     cfg.merge_from_file("configs/pseudo_labeling/config_files/test_2.yaml")
     cfg.MODEL.WEIGHTS = "outputs/baseline/TEST_1/best_model.pth"
     cfg.DATASETS.TEST = ("my_dataset",)
