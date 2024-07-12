@@ -296,8 +296,8 @@ PSEUDO_LABELING:
   DATASET:
   - unlabeled_data
   BURN_IN_ITERS: 
-  PSEUDO_UPDATE_FREQ: 320 
-  EMA_KEEP_RATE: 0.999
+  PSEUDO_UPDATE_FREQ: 20 
+  EMA_KEEP_RATE: 0.988
   METRIC_THRESHOLD: 0.5
 
 # =============================================================================
@@ -327,7 +327,7 @@ SOLVER:
     ENABLED: false
     NORM_TYPE: 2.0
   GAMMA: 0.1
-  IMS_PER_BATCH: 1
+  IMS_PER_BATCH: 16
   LR_SCHEDULER_NAME: WarmupMultiStepLR
   MAX_ITER: 144100 #127200
   MOMENTUM: 0.9
@@ -364,7 +364,7 @@ TEST:
     - 1100
     - 1200
   DETECTIONS_PER_IMAGE: 100
-  EVAL_PERIOD: 1407
+  EVAL_PERIOD: 88
   EXPECTED_RESULTS: []
   KEYPOINT_OKS_SIGMAS: []
   PRECISE_BN:

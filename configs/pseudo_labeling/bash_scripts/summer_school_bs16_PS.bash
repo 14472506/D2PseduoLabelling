@@ -14,28 +14,28 @@ MODE="train"  # Set to "train" or "test"
 CONFIG_FILE="configs/pseudo_labeling/config_files/test_2.yaml"
 USE_GPU=0
 ITERS=70350
-BURN_IN_ITERS=80000
-METRIC_THRESHOLD=1.0
+BURN_IN_ITERS=0
+METRIC_THRESHOLD=0.35
 
 # Define lists of weights and output directories
 TRAIN_WEIGHTS=(
-    "detectron2://COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x/137849600/model_final_f10217.pkl"
-    #"detectron2://COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x/137849600/model_final_f10217.pkl"
-    #"detectron2://COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x/137849600/model_final_f10217.pkl"
+    "outputs/baseline_BS16/TEST_1/best_model.pth"
+    #"outputs/New_DS_Baseline/TEST_2/best_model.pth"
+    #"outputs/New_DS_Baseline/TEST_3/best_model.pth"
 )
 TRAIN_DATASET="('summerschool_val',)"
 
 TEST_WEIGHTS=(
-    "outputs/baseline/TEST_1/best_model.pth"
-    #"outputs/baseline/TEST_2/best_model.pth"
-    #"outputs/baseline/TEST_3/best_model.pth"
+    "outputs/SSBS_16_PS_999_long/TEST_1/best_model.pth"
+    #"outputs/No_Burn_in_040/TEST_2/best_model.pth"
+    #"outputs/No_Burn_in_040/TEST_3/best_model.pth"
 )
 TEST_DATASET="('summerschool_val',)"
 
 OUTPUT_DIRS=(
-    "outputs/baseline/TEST_1"
-    #"outputs/baseline/TEST_2"
-    #"outputs/baseline/TEST_3"
+    "outputs/SSBS_16_PS_999_long/TEST_1"
+    #"outputs/No_Burn_in_040/TEST_2"
+    #"outputs/No_Burn_in_040/TEST_3"
 )
 
 ###############################################################################

@@ -1,9 +1,7 @@
-# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import logging
 import torchvision.transforms as transforms
 import random
 from PIL import ImageFilter
-
 
 class GaussianBlur:
     """
@@ -34,6 +32,39 @@ def build_strong_augmentation(is_train):
     logger = logging.getLogger(__name__)
     augmentation = []
     if is_train:
+        # This is similar to SimCLR https://arxiv.org/abs/2002.05709
+        augmentation.append(transforms.RandomGrayscale(p=0.2))
+        augmentation.append(transforms.RandomApply([GaussianBlur([0.1, 2.0])], p=0.5))
+
+        randcrop_transform = transforms.Compose(
+            [
+                transforms.RandomResizedCrop(size=(224, 224), scale=(0.8, 1.0)),
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.ToTensor(),
+                transforms.RandomErasing(
+                    p=0.5, scale=(0.02, 0.2), ratio=(0.3, 3.3), value="random"
+                ),
+                transforms.ToPILImage(),
+            ]
+        )
+        augmentation.append(randcrop_transform)
+
+        logger.info("Augmentations used in training: " + str(augmentation))
+    return transforms.Compose(augmentation)
+
+
+
+"""
+def build_strong_augmentation(is_train):
+    Create a list of :class:`Augmentation` from config.
+    Now it includes resizing and flipping.
+
+    Returns:
+        list[Augmentation]
+
+    logger = logging.getLogger(__name__)
+    augmentation = []
+    if is_train:
         # This is simialr to SimCLR https://arxiv.org/abs/2002.05709
         augmentation.append(
             transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8)
@@ -60,3 +91,4 @@ def build_strong_augmentation(is_train):
 
         logger.info("Augmentations used in training: " + str(augmentation))
     return transforms.Compose(augmentation)
+"""

@@ -11,11 +11,11 @@ MODE="train"  # Set to "train" or "test"
 # CONFIGURE TRAIN AND TEST PARAMS 
 ###############################################################################
 # Define default values for the parameters
-CONFIG_FILE="configs/pseudo_labeling/config_files/test_2.yaml"
+CONFIG_FILE="configs/pseudo_labeling/config_files/test_2_MODED.yaml"
 USE_GPU=0
-ITERS=70350
+ITERS=4397
 BURN_IN_ITERS=80000
-METRIC_THRESHOLD=1.0
+METRIC_THRESHOLD=0.30
 
 # Define lists of weights and output directories
 TRAIN_WEIGHTS=(
@@ -26,14 +26,14 @@ TRAIN_WEIGHTS=(
 TRAIN_DATASET="('summerschool_val',)"
 
 TEST_WEIGHTS=(
-    "outputs/baseline/TEST_1/best_model.pth"
+    "outputs/baseline_BS16/TEST_1/best_model.pth"
     #"outputs/baseline/TEST_2/best_model.pth"
     #"outputs/baseline/TEST_3/best_model.pth"
 )
 TEST_DATASET="('summerschool_val',)"
 
 OUTPUT_DIRS=(
-    "outputs/baseline/TEST_1"
+    "outputs/baseline_BS16/TEST_1"
     #"outputs/baseline/TEST_2"
     #"outputs/baseline/TEST_3"
 )

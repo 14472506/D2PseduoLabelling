@@ -18,20 +18,25 @@ from detectron2.utils.visualizer import Visualizer
 from detectron2.data import MetadataCatalog
 
 # get jersey test registration
-from baseline_dev.data.registration import register_jersey_test
-from baseline_dev.config import add_my_config
+from pseudo_labeling.engine.trainer import PseudoTrainer
+from pseudo_labeling.config import add_pseudo_config
+from pseudo_labeling.modelling.my_rcnn import MyGeneralizedRCNN
+from detectron2.data.datasets import register_coco_instances
 
 # functions ===============================================
 def setup(config_path, weights_path):
     cfg = get_cfg()
-    add_my_config(cfg)
+    add_pseudo_config(cfg)
     cfg.merge_from_file(config_path)    
     cfg.MODEL.WEIGHTS = weights_path 
     return(cfg)
 
+def register_dataset():
+    register_coco_instances("summerschool_test", {}, "datasets/summer_school_data/labelled/test/test_annotations.json", "datasets/summer_school_data/labelled/test/")
+
 def main(config_path, weights_path, images_dir, outputs_dir):
     # get config and predictor
-    register_jersey_test()
+    register_dataset()
     cfg = setup(config_path, weights_path)
     predictor = DefaultPredictor(cfg)
 
