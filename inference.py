@@ -69,7 +69,7 @@ def main(config_path, weights_path, images_dir, outputs_dir):
 if __name__ == "__main__":
     main(
         "configs/pseudo_labeling/config_files/test_2.yaml",
-        "outputs/SSBS_16_PS/TEST_1/best_model.pth",
-        "datasets/summer_school_data/labelled/test/",
-        "inference_out/ps"
+        "outputs/new_ds_config_v2/baseline/TEST_1/best_model.pth",
+        "datasets/jr_v5_unlabeled_data",
+        "inference_out/baseline"
     )

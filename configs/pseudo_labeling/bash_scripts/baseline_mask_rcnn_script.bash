@@ -4,7 +4,7 @@
 ###############################################################################
 ###
 ###
-MODE="train"  # Set to "train" or "test"
+MODE="test"  # Set to "train" or "test"
 ###
 ###
 ###############################################################################
@@ -13,8 +13,8 @@ MODE="train"  # Set to "train" or "test"
 # Define default values for the parameters
 CONFIG_FILE="configs/pseudo_labeling/config_files/test_2.yaml"
 USE_GPU=0
-ITERS=70350
-BURN_IN_ITERS=80000
+ITERS=92700
+BURN_IN_ITERS=95000
 METRIC_THRESHOLD=1.0
 
 # Define lists of weights and output directories
@@ -23,17 +23,17 @@ TRAIN_WEIGHTS=(
     #"detectron2://COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x/137849600/model_final_f10217.pkl"
     #"detectron2://COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x/137849600/model_final_f10217.pkl"
 )
-TRAIN_DATASET="('summerschool_val',)"
+TRAIN_DATASET="('jersey_val',)"
 
 TEST_WEIGHTS=(
-    "outputs/baseline/TEST_1/best_model.pth"
+    "outputs/new_ds_config_v2/baseline/TEST_1/best_model.pth"
     #"outputs/baseline/TEST_2/best_model.pth"
     #"outputs/baseline/TEST_3/best_model.pth"
 )
-TEST_DATASET="('summerschool_val',)"
+TEST_DATASET="('jersey_test',)"
 
 OUTPUT_DIRS=(
-    "outputs/baseline/TEST_1"
+    "outputs/new_ds_config_v2/baseline/TEST_1"
     #"outputs/baseline/TEST_2"
     #"outputs/baseline/TEST_3"
 )

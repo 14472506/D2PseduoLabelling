@@ -1,6 +1,7 @@
 /datasets
 /outputs
 /results_store
+/inference_out
 scratch_pad
 __pycache__/
 *.cython-38.pyc

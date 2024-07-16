@@ -115,7 +115,7 @@ class PseudoTrainer(DefaultTrainer):
         """
         Experimenting with custom data test loader registration here
         """
-        if dataset_name == "jersey_royal_test":
+        if dataset_name == "jersey_test":
             register_jersey_test()
         elif dataset_name == "jersey_royal_val":
             register_jersey_val()

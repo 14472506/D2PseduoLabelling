@@ -21,7 +21,7 @@ DATASETS:
   - jersey_royal_val
   #- jersey_royal_test
   TRAIN:
-  - summerschool_train
+  - jersey_train
 
 # =============================================================================
 # GLOBAL
@@ -78,7 +78,7 @@ MODEL:
   BACKBONE:
     FREEZE_AT: 0                        # default is 2, works with 0
     NAME: build_resnet_fpn_backbone
-  DEVICE: cpu
+  DEVICE: cuda
   FPN:
     FUSE_TYPE: sum
     IN_FEATURES:
@@ -155,7 +155,7 @@ MODEL:
     - 0.5
     NMS_THRESH_TEST: 0.5
     NORM: ''
-    NUM_CLASSES: 4
+    NUM_CLASSES: 1
     NUM_CONVS: 4
     PRIOR_PROB: 0.01
     SCORE_THRESH_TEST: 0.05
@@ -214,7 +214,7 @@ MODEL:
     - 0.5
     NAME: StandardROIHeads
     NMS_THRESH_TEST: 0.5
-    NUM_CLASSES: 4
+    NUM_CLASSES: 1
     POSITIVE_FRACTION: 0.25
     PROPOSAL_APPEND_GT: true
     SCORE_THRESH_TEST: 0.05
@@ -287,7 +287,7 @@ MODEL:
     LOSS_WEIGHT: 1.0
     NAME: SemSegFPNHead
     NORM: GN
-    NUM_CLASSES: 54
+    NUM_CLASSES: 1
   WEIGHTS: outputs/baseline/TEST_1/best_model.pth
 # =============================================================================
 # PSEUDO LABELING
@@ -365,7 +365,7 @@ TEST:
     - 1100
     - 1200
   DETECTIONS_PER_IMAGE: 100
-  EVAL_PERIOD: 1407
+  EVAL_PERIOD: 1778
   EXPECTED_RESULTS: []
   KEYPOINT_OKS_SIGMAS: []
   PRECISE_BN:
