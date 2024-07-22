@@ -13,10 +13,12 @@ MODE="test"  # Set to "train" or "test"
 # Define default values for the parameters
 CONFIG_FILE="configs/pseudo_labeling/config_files/test_2.yaml"
 USE_GPU=0
-ITERS=70350
+ITERS=22225
 BURN_IN_ITERS=0
 METRIC_THRESHOLD=0.50
 CLASS_THRESHOLD=0.5
+IMS_PER_BATCH=4
+EVAL_PERIOD=445
 
 # Define lists of weights and output directories
 TRAIN_WEIGHTS=(
@@ -27,14 +29,14 @@ TRAIN_WEIGHTS=(
 TRAIN_DATASET="('jersey_val',)"
 
 TEST_WEIGHTS=(
-    "outputs/new_ds_config_v2/pseudo_baseling/TEST_1/model_0049999.pth"
+    "outputs/new_ds_config_v2/bs_dev_DELETE_THIS_again/TEST_1/best_model.pth"
     #"outputs/No_Burn_in_040/TEST_2/best_model.pth"
     #"outputs/No_Burn_in_040/TEST_3/best_model.pth"
 )
 TEST_DATASET="('jersey_test',)"
 
 OUTPUT_DIRS=(
-    "outputs/new_ds_config_v2/pseudo_baseling/TEST_1"
+    "outputs/new_ds_config_v2/bs_dev_DELETE_THIS_again/TEST_1"
     #"outputs/No_Burn_in_040/TEST_2"
     #"outputs/No_Burn_in_040/TEST_3"
 )
@@ -76,10 +78,12 @@ for i in "${!WEIGHTS[@]}"; do
             OUTPUT_DIR $OUTPUT_DIR \
             MODEL.WEIGHTS $WEIGHT \
             SOLVER.MAX_ITER $ITERS \
+            SOLVER.IMS_PER_BATCH $IMS_PER_BATCH\
             DATASETS.TEST "$DATASET" \
             PSEUDO_LABELING.BURN_IN_ITERS $BURN_IN_ITERS \
             PSEUDO_LABELING.METRIC_THRESHOLD $METRIC_THRESHOLD\
-            PSEUDO_LABELING.CLASS_CONFIDENCE_THRESHOLD $CLASS_THRESHOLD
+            PSEUDO_LABELING.CLASS_CONFIDENCE_THRESHOLD $CLASS_THRESHOLD\
+            TEST.EVAL_PERIOD $EVAL_PERIOD
     elif [ "$MODE" = "test" ]; then
         echo "Testing with weight: $WEIGHT, output directory: $OUTPUT_DIR"
         python pseudo_labeling_train_net.py --use_gpu $USE_GPU --config $CONFIG_FILE  \
@@ -87,10 +91,12 @@ for i in "${!WEIGHTS[@]}"; do
             OUTPUT_DIR $OUTPUT_DIR \
             MODEL.WEIGHTS $WEIGHT \
             SOLVER.MAX_ITER $ITERS \
+            SOLVER.IMS_PER_BATCH $IMS_PER_BATCH\
             DATASETS.TEST "$DATASET" \
             PSEUDO_LABELING.BURN_IN_ITERS $BURN_IN_ITERS \
             PSEUDO_LABELING.METRIC_THRESHOLD $METRIC_THRESHOLD\
-            PSEUDO_LABELING.CLASS_CONFIDENCE_THRESHOLD $CLASS_THRESHOLD
+            PSEUDO_LABELING.CLASS_CONFIDENCE_THRESHOLD $CLASS_THRESHOLD\
+            TEST.EVAL_PERIOD $EVAL_PERIOD
     else
         echo "Unknown mode: $MODE. Use 'train' or 'test'. Exiting."
         exit 1

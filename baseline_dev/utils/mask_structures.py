@@ -470,7 +470,7 @@ class ROIMasks:
     by the corresponding ROI box.
     """
 
-    def __init__(self, tensor: torch.Tensor, logit_output: bool):
+    def __init__(self, tensor: torch.Tensor, logit_output: bool, both_out: bool):
         """
         Args:
             tensor: (N, M, M) mask tensor that defines the mask within each ROI.
@@ -479,6 +479,7 @@ class ROIMasks:
             raise ValueError("ROIMasks must take a masks of 3 dimension.")
         self.tensor = tensor
         self.logit_output = logit_output
+        self.both_out = both_out
 
     def to(self, device: torch.device) -> "ROIMasks":
         return ROIMasks(self.tensor.to(device))
@@ -533,6 +534,8 @@ class ROIMasks:
         
         if self.logit_output:
             return BitDummy(bitmasks)
+        elif self.both_out:
+            return BitMasks(bitmasks), BitDummy(bitmasks)
         else:
             return BitMasks(bitmasks)
     

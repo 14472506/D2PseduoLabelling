@@ -10,7 +10,7 @@ from detectron2.modeling.meta_arch.rcnn import GeneralizedRCNN
 from detectron2.utils.events import get_event_storage   
 from detectron2.structures import Instances
 
-from baseline_dev.utils.mask_structures import ROIMasks
+from pseudo_labeling.modelling.mask_structures import ROIMasks
 
 # class
 @META_ARCH_REGISTRY.register()
@@ -20,7 +20,8 @@ class MyGeneralizedRCNN(GeneralizedRCNN):
     """
     def __init__(self, cfg, pseudo_labeling=False):
         super(MyGeneralizedRCNN, self).__init__(cfg)
-        self.pseudo_labeling = False
+        self.pseudo_labeling = pseudo_labeling
+
 
     # Adding inference modified with MyGeneralizedRCNN call to post processing
     def inference(

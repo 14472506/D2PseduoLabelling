@@ -21,6 +21,9 @@ from detectron2.data import MetadataCatalog
 from pseudo_labeling.engine.trainer import PseudoTrainer
 from pseudo_labeling.config import add_pseudo_config
 from pseudo_labeling.modelling.my_rcnn import MyGeneralizedRCNN
+from pseudo_labeling.modelling import mask_head 
+from pseudo_labeling.modelling import custom_roi
+
 from detectron2.data.datasets import register_coco_instances
 
 # functions ===============================================
@@ -62,14 +65,14 @@ def main(config_path, weights_path, images_dir, outputs_dir):
         #plt.imshow(cv2.cvtColor(v.get_image()[:,:,::-1], cv2.COLOR_BGR2RGB))
         #plt.savefig(os.path.join(outputs_dir, im_path))
         count += 1
-        if count > 9:
+        if count > 19:
             break
         
 # execute =================================================
 if __name__ == "__main__":
     main(
         "configs/pseudo_labeling/config_files/test_2.yaml",
-        "outputs/new_ds_config_v2/baseline/TEST_1/best_model.pth",
+        "outputs/new_ds_config_v2/bs_dev_DELETE_THIS_again/TEST_1/best_model.pth",
         "datasets/jr_v5_unlabeled_data",
-        "inference_out/baseline"
+        "inference_out/with_affinity_loss"
     )

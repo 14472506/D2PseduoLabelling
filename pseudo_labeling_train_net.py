@@ -23,6 +23,8 @@ from detectron2 import model_zoo
 from pseudo_labeling.engine.trainer import PseudoTrainer
 from pseudo_labeling.config import add_pseudo_config
 from pseudo_labeling.modelling.my_rcnn import MyGeneralizedRCNN
+from pseudo_labeling.modelling import mask_head 
+from pseudo_labeling.modelling import custom_roi
 
 # === functions === #
 def parse_args():

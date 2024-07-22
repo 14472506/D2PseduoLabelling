@@ -212,7 +212,7 @@ MODEL:
     - 1
     IOU_THRESHOLDS:
     - 0.5
-    NAME: StandardROIHeads
+    NAME: CustomStandardROIHeads
     NMS_THRESH_TEST: 0.5
     NUM_CLASSES: 1
     POSITIVE_FRACTION: 0.25
@@ -239,7 +239,7 @@ MODEL:
   ROI_MASK_HEAD:
     CLS_AGNOSTIC_MASK: false
     CONV_DIM: 256
-    NAME: MaskRCNNConvUpsampleHead
+    NAME: CustomMaskRCNNConvUpsampleHead
     NORM: ''
     NUM_CONV: 4
     POOLER_RESOLUTION: 14
@@ -328,7 +328,7 @@ SOLVER:
     ENABLED: false
     NORM_TYPE: 2.0
   GAMMA: 0.1
-  IMS_PER_BATCH: 1
+  IMS_PER_BATCH: 4
   LR_SCHEDULER_NAME: WarmupMultiStepLR
   MAX_ITER: 144100 #127200
   MOMENTUM: 0.9

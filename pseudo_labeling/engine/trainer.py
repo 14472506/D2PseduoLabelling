@@ -12,6 +12,8 @@ import logging
 import time
 import cv2
 import copy
+import statistics
+import matplotlib.pyplot as plt
 
 import torch
 
@@ -26,6 +28,9 @@ from detectron2.data import build_detection_test_loader
 from detectron2.data import MetadataCatalog
 from detectron2.utils.events import EventStorage
 from detectron2.structures import PolygonMasks, Boxes, BoxMode, Instances
+from detectron2.modeling import build_model
+
+from detectron2.modeling.roi_heads.mask_head import ROI_MASK_HEAD_REGISTRY
 
 # pseudo labeling imports
 from pseudo_labeling.data.build import build_pseudo_train_loader
@@ -37,6 +42,7 @@ from pseudo_labeling.data.registration import (
     )
 from pseudo_labeling.engine.hooks import EvalHook
 from pseudo_labeling.solver.optimizers import build_optimizer
+from pseudo_labeling.solver.losses import calculate_affinity_mask
 
 # classes 
 class PseudoTrainer(DefaultTrainer):
@@ -91,11 +97,25 @@ class PseudoTrainer(DefaultTrainer):
 
         # training loop parameters
         self.start_iter = 0
+
+        self.metric_thresh = cfg.PSEUDO_LABELING.METRIC_THRESHOLD
+        self.metric_mean_acc = 0
+        self.metric_mean_count = 0
+        self.metric_mean_val = 0
+
         self.max_iter = cfg.SOLVER.MAX_ITER
         self.cfg = cfg
 
         # register hooks
         self.register_hooks(self.build_hooks())
+
+    # =========================================================================
+    # Build Model Method
+    # =========================================================================
+    #def build_model(cls, cfg):
+    #    model = build_model(cfg)
+    #    model.roi_heads = MaskRCNNConvUpsampleHead(cfg, model.backbone.output_shape())
+    #    return model
     
     # =========================================================================
     # Data loader methods
@@ -253,9 +273,19 @@ class PseudoTrainer(DefaultTrainer):
             loss_dict = {}
 
             for key in record_dict.keys():
-                # simple summing for now but more complex weighting and approaches can be used here.
+                # weighting here later
                 loss_dict[key] = sum(record_dict[key].values())
+
             losses = sum(loss_dict.values())
+
+        if self.iter % self.cfg.TEST.EVAL_PERIOD == 0:
+            if self.iter != 0:
+                self.metric_thresh = self.metric_mean_val - 0.04
+                print("### NEW_THRESH ######################################")
+                print(self.metric_thresh)
+                self.metric_mean_count = 0
+                self.metric_mean_acc = 0
+
 
         self.optimizer.zero_grad()
         losses.backward()
@@ -265,6 +295,7 @@ class PseudoTrainer(DefaultTrainer):
     # =========================================================================
     # Pseudo Labeling
     # =========================================================================
+
     def pseudo_label(self):
         """
         Details
@@ -280,6 +311,7 @@ class PseudoTrainer(DefaultTrainer):
 
             batch_preds = self.model_teacher(unlabeled_data)
 
+            metric_values = []
             # Process predictions for each image in the batch
             for i, preds in enumerate(batch_preds):
                 preds = preds["instances"].to("cpu")
@@ -305,9 +337,11 @@ class PseudoTrainer(DefaultTrainer):
 
                 # Filter masks by metric
                 mf_pred_scores = []
-                mf_pred_masks = []
+                mf_pred_binary_masks = []
+                #mf_pred_logit_masks = []
                 mf_pred_boxes = []
                 mf_pred_classes = []
+                mf_vol_sym = []
 
                 for j in range(len(cf_pred_scores)):
                     conf_score = cf_pred_scores[j]
@@ -325,19 +359,32 @@ class PseudoTrainer(DefaultTrainer):
                     lower_volume = np.minimum(mask, 0.5)
                     vol_sym = conf_score * (higher_volume.sum() / lower_volume.sum()) ** 2
 
-                    if vol_sym < self.cfg.PSEUDO_LABELING.METRIC_THRESHOLD:
+                    if vol_sym < self.metric_thresh:
                         continue
 
                     mf_pred_scores.append(cf_pred_scores[j])
-                    mf_pred_masks.append(binary_mask)
+                    mf_pred_binary_masks.append(binary_mask)
+                    #mf_pred_logit_masks.append(mask)
                     mf_pred_boxes.append(cf_pred_boxes[j])
                     mf_pred_classes.append(cf_pred_classes[j])
+                    mf_vol_sym.append(vol_sym)
 
                 if len(mf_pred_scores) == 0:
                     continue
 
+                #mf_pred_logit_masks_tensor = torch.tensor(mf_pred_binary_masks, dtype=torch.float32, device="cpu")
+                #affinity_binary_masks = calculate_affinity_mask(mf_pred_logit_masks_tensor)
+
+                # Prepare images, binary masks, and affinity masks for visualization
+                #images = [unlabeled_data[i]["image"].permute(1, 2, 0).cpu().numpy()]
+                #binary_masks = [np.array(mf_pred_binary_masks[i]) for i in range(len(mf_pred_binary_masks))]
+                #affinity_masks = [affinity_binary_masks[i].cpu().numpy().squeeze() for i in range(len(affinity_binary_masks))]
+
+                # Visualize the affinity masks
+                #visualize_masks(images, binary_masks, affinity_masks, titles=[f"Image {i}" for i in range(len(images))], save_path='mask_visualization_affinity.png')
+
                 # Data Post Processing
-                raw_polygons = self.masks_to_polygone_masks(mf_pred_masks)
+                raw_polygons = self.masks_to_polygone_masks(mf_pred_binary_masks)
                 all_polygons = []
                 for polys in raw_polygons:
                     good_polys = []
@@ -352,17 +399,23 @@ class PseudoTrainer(DefaultTrainer):
                 instances = Instances((unlabeled_data[i]["height"], unlabeled_data[i]["width"]))
                 instances.gt_boxes = boxes
                 instances.gt_masks = polygone_masks
+                #instances.gt_masks_logits = torch.tensor(mf_pred_binary_masks)
                 instances.gt_classes = torch.tensor(mf_pred_classes)
+                instances.gt_metric_score = torch.tensor(mf_vol_sym)
 
                 # Update unlabeled data with pseudo labels
                 unlabeled_data[i]["image"] = student_images[i]
                 unlabeled_data[i]["instances"] = instances
+                metric_values.extend(mf_vol_sym)
 
                 got_pseudo_label = True
         
+        self.metric_mean_count += 1
+        self.metric_mean_acc += statistics.mean(metric_values)
+        self.metric_mean_val = self.metric_mean_acc/self.metric_mean_count
         # Return the batch of unlabeled data with pseudo labels
         return unlabeled_data
-
+    
     def masks_to_polygone_masks(self, masks):
         """ 
         Details
@@ -454,3 +507,53 @@ class PseudoSimpleTrainer(SimpleTrainer):
         if self._unlabeled_data_loader_iter_obj is None:
             self._unlabeled_data_loader_iter_obj = iter(self.data_loader[1])
         return self._unlabeled_data_loader_iter_obj
+    
+def visualize_masks(images, binary_masks, affinity_masks, titles=None, save_path='mask_visualization_affinity.png'):
+    """
+    Visualize a batch of images with their corresponding binary masks and affinity masks.
+
+    Args:
+        images (list or numpy array): List or array of images to visualize.
+        binary_masks (list or numpy array): List or array of binary masks to visualize.
+        affinity_masks (list or numpy array): List or array of affinity masks to visualize.
+        titles (list): Optional list of titles for each subplot.
+        save_path (str): Path to save the visualization image.
+    """
+    num_images = len(images)
+
+    plt.figure(figsize=(15, 5 * num_images))
+
+    for i in range(num_images):
+        plt.subplot(num_images, 3, 3 * i + 1)
+        plt.imshow(images[i], cmap='gray')
+        if titles:
+            plt.title(f"{titles[i]} Image")
+        plt.axis('off')
+
+        plt.subplot(num_images, 3, 3 * i + 2)
+        binary_mask = binary_masks[i]
+        if isinstance(binary_mask, torch.Tensor):
+            binary_mask = binary_mask.cpu().numpy()
+        if binary_mask.ndim == 3 and binary_mask.shape[2] == 1:  # Handle case where masks have shape [H, W, 1]
+            binary_mask = binary_mask.squeeze(-1)
+        binary_mask = (binary_mask - binary_mask.min()) / (binary_mask.max() - binary_mask.min())
+        plt.imshow(binary_mask, cmap='gray')
+        if titles:
+            plt.title(f"{titles[i]} Binary Mask")
+        plt.axis('off')
+
+        plt.subplot(num_images, 3, 3 * i + 3)
+        affinity_mask = affinity_masks[i]
+        if isinstance(affinity_mask, torch.Tensor):
+            affinity_mask = affinity_mask.cpu().numpy()
+        if affinity_mask.ndim == 3 and affinity_mask.shape[2] == 1:  # Handle case where masks have shape [H, W, 1]
+            affinity_mask = affinity_mask.squeeze(-1)
+        affinity_mask = (affinity_mask - affinity_mask.min()) / (affinity_mask.max() - affinity_mask.min())
+        plt.imshow(affinity_mask, cmap='gray')
+        if titles:
+            plt.title(f"{titles[i]} Affinity Mask")
+        plt.axis('off')
+
+    plt.tight_layout()
+    plt.savefig(save_path)
+    print(f"Visualization saved to {save_path}")

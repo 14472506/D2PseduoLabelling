@@ -9,7 +9,7 @@ from torch import device
 
 from detectron2.layers.roi_align import ROIAlign
 from detectron2.utils.memory import retry_if_cuda_oom
-
+from detectron2.layers.mask_ops import paste_masks_in_image
 from detectron2.structures.boxes import Boxes
 
 
@@ -470,7 +470,7 @@ class ROIMasks:
     by the corresponding ROI box.
     """
 
-    def __init__(self, tensor: torch.Tensor):
+    def __init__(self, tensor: torch.Tensor, logit_output: bool):
         """
         Args:
             tensor: (N, M, M) mask tensor that defines the mask within each ROI.
@@ -478,6 +478,7 @@ class ROIMasks:
         if tensor.dim() != 3:
             raise ValueError("ROIMasks must take a masks of 3 dimension.")
         self.tensor = tensor
+        self.logit_output = logit_output
 
     def to(self, device: torch.device) -> "ROIMasks":
         return ROIMasks(self.tensor.to(device))
@@ -521,8 +522,6 @@ class ROIMasks:
         """
         Args: see documentation of :func:`paste_masks_in_image`.
         """
-        from detectron2.layers.mask_ops import paste_masks_in_image, _paste_masks_tensor_shape
-
         if torch.jit.is_tracing():
             if isinstance(height, torch.Tensor):
                 paste_func = _paste_masks_tensor_shape
@@ -531,9 +530,11 @@ class ROIMasks:
         else:
             paste_func = retry_if_cuda_oom(paste_masks_in_image)
         bitmasks = paste_func(self.tensor, boxes.tensor, (height, width), threshold=threshold)
-        #print(bitmasks.type(torch.float32))
-        return BitDummy(bitmasks)
-        #return BitMasks(bitmasks)
+        
+        if self.logit_output:
+            return BitDummy(bitmasks)
+        else:
+            return BitMasks(bitmasks)
     
 class BitDummy:
     """ Detials """
