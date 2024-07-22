@@ -4,7 +4,7 @@
 ###############################################################################
 ###
 ###
-MODE="test"  # Set to "train" or "test"
+MODE="train"  # Set to "train" or "test"
 ###
 ###
 ###############################################################################
@@ -29,14 +29,14 @@ TRAIN_WEIGHTS=(
 TRAIN_DATASET="('jersey_val',)"
 
 TEST_WEIGHTS=(
-    "outputs/new_ds_config_v2/bs_dev_DELETE_THIS_again/TEST_1/best_model.pth"
+    "outputs/new_ds_config_v2/bs_dev_DELETE_THIS_again_dif_augs/TEST_1/best_model.pth"
     #"outputs/No_Burn_in_040/TEST_2/best_model.pth"
     #"outputs/No_Burn_in_040/TEST_3/best_model.pth"
 )
 TEST_DATASET="('jersey_test',)"
 
 OUTPUT_DIRS=(
-    "outputs/new_ds_config_v2/bs_dev_DELETE_THIS_again/TEST_1"
+    "outputs/new_ds_config_v2/bs_dev_DELETE_THIS_again_dif_augs/TEST_1"
     #"outputs/No_Burn_in_040/TEST_2"
     #"outputs/No_Burn_in_040/TEST_3"
 )
