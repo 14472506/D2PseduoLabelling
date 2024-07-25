@@ -127,7 +127,8 @@ def mask_rcnn_loss(pred_mask_logits: torch.Tensor, instances: List[Instances], v
         stacked_tensors = torch.stack(padded_tensors)
         mean_met_score = torch.mean(stacked_tensors, dim=0)
 
-        mask_sup_loss = torch.mean(mean_met_score * (0.5 * dice + 0.1 * affinity))
+        # modified here, make it perminant if it works?
+        mask_sup_loss = torch.mean(0.5 * dice + 0.1 * affinity)
         print(mask_sup_loss)
         return mask_sup_loss
 

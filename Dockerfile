@@ -36,7 +36,7 @@ RUN conda create --name ultralytics python=3.9 -y && \
     conda run -n ultralytics pip install ultralytics
 
 # Set the default command to activate the conda environment
-CMD ["bash", "-c", "source activate detectron2 && bash"]
+CMD ["bash"]
 
 
 

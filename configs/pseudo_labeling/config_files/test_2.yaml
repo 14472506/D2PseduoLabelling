@@ -288,11 +288,12 @@ MODEL:
     NAME: SemSegFPNHead
     NORM: GN
     NUM_CLASSES: 1
-  WEIGHTS: outputs/baseline/TEST_1/best_model.pth
+  WEIGHTS: ""
 # =============================================================================
 # PSEUDO LABELING
 # =============================================================================
 PSEUDO_LABELING:
+  TRAIN_PERC: 10
   DATASET:
   - unlabeled_data
   BURN_IN_ITERS: 
@@ -300,6 +301,8 @@ PSEUDO_LABELING:
   EMA_KEEP_RATE: 0.999
   METRIC_THRESHOLD: 0.5
   CLASS_CONFIDENCE_THRESHOLD: 0.5
+  METRIC_USE: static
+  METRIC_OFFSET: 0.06
 
 # =============================================================================
 # OUTPUT DIR

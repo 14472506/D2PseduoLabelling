@@ -38,7 +38,8 @@ from pseudo_labeling.data.registration import (
     register_jersey_train,
     register_unlabeled,
     register_jersey_val,
-    register_jersey_test
+    register_jersey_test,
+    my_coco_train
     )
 from pseudo_labeling.engine.hooks import EvalHook
 from pseudo_labeling.solver.optimizers import build_optimizer
@@ -66,6 +67,9 @@ class PseudoTrainer(DefaultTrainer):
         # get model teacher
         model_teacher = self.build_model(cfg)
         self.model_teacher = model_teacher
+        # Set requires_grad=False for teacher model parameters
+        for param in self.model_teacher.parameters():
+            param.requires_grad = False
         self.model_teacher.pseudo_labeling = True
         self.model_teacher.eval()
 
@@ -125,8 +129,13 @@ class PseudoTrainer(DefaultTrainer):
         """ 
         Detials
         """
-        register_jersey_train()
-        register_unlabeled()
+        if "jersey_train" in cfg.DATASETS.TRAIN:
+            register_jersey_train(cfg.PSEUDO_LABELING.TRAIN_PERC)
+            register_unlabeled()
+        if "my_coco_train" in cfg.DATASETS.TRAIN:
+            my_coco_train(cfg.PSEUDO_LABELING.TRAIN_PERC)
+            register_unlabeled()
+            
         return build_pseudo_train_loader(cfg)
     
     @classmethod
@@ -278,13 +287,14 @@ class PseudoTrainer(DefaultTrainer):
 
             losses = sum(loss_dict.values())
 
-        if self.iter % self.cfg.TEST.EVAL_PERIOD == 0:
-            if self.iter != 0:
-                self.metric_thresh = self.metric_mean_val - 0.04
-                print("### NEW_THRESH ######################################")
-                print(self.metric_thresh)
-                self.metric_mean_count = 0
-                self.metric_mean_acc = 0
+        if self.cfg.PSEUDO_LABELING.METRIC_USE == "dynamic":
+            if self.iter % self.cfg.TEST.EVAL_PERIOD == 0:
+                if self.iter != 0:
+                    self.metric_thresh = self.metric_mean_val - self.cfg.PSEUDO_LABELING.METRIC_OFFSET
+                    print("### NEW_THRESH ######################################")
+                    print(self.metric_thresh)
+                    self.metric_mean_count = 0
+                    self.metric_mean_acc = 0
 
 
         self.optimizer.zero_grad()
