@@ -9,19 +9,28 @@ MODE="train"  # Set to "train" or "test"
 ###############################################################################
 # Define default values for the parameters
 CONFIG_FILE="configs/pseudo_labeling/config_files/test_2.yaml"
+# All training params
 USE_GPU=0
 ITERS=5556
 TRAIN_PERC=100
-BURN_IN_ITERS=0
-METRIC_THRESHOLD=0.50
-CLASS_THRESHOLD=0.5
 IMS_PER_BATCH=16
 EVAL_PERIOD=112
+NUM_CLASSES=1
+
+# Pseudo labeling conditional setup
+PRE_TRAIN=false
+PRE_TRAIN_ITERS=0
+BURN_IN=false
+BURN_IN_ITERS=0
+
+# Pseudo labeling params
+METRIC_THRESHOLD=0.50
+CLASS_THRESHOLD=0.5
 EMA_UPDATE=20
-EMA_KEEP_RATE=0.990
+EMA_KEEP_RATE=0.998
 METRIC_USE="static"
 METRIC_OFFSET=0.05
-NUM_CLASSES=1  # Define the number of classes
+ 
 
 # Define lists of weights and output directories
 TRAIN_WEIGHTS=(
@@ -30,18 +39,21 @@ TRAIN_WEIGHTS=(
     #"outputs/New_DS_Baseline/TEST_3/best_model.pth"
 )
 
+# burn in student weights
+BURN_IN_WEIGHTS="detectron2://COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x/137849600/model_final_f10217.pkl"
+
 TRAIN_DATASET="('jersey_train',)"
 VAL_DATASET="('jersey_val',)"
 
 TEST_WEIGHTS=(
-    "outputs/ps_dev_testing/pseudo_labeling/ema_990/best_model.pth"
+    "outputs/ps_dev_testing/pseudo_labeling/burn_in_to_dist_test/best_model.pth"
     #"outputs/No_Burn_in_040/TEST_2/best_model.pth"
     #"outputs/No_Burn_in_040/TEST_3/best_model.pth"
 )
 TEST_DATASET="('jersey_test',)"
 
 OUTPUT_DIRS=(
-    "outputs/ps_dev_testing/pseudo_labeling/ema_990"
+    "outputs/ps_dev_testing/pseudo_labeling/burn_in_to_dist_test"
     #"outputs/No_Burn_in_040/TEST_2"
     #"outputs/No_Burn_in_040/TEST_3"
 )
@@ -70,6 +82,21 @@ if [ "${#WEIGHTS[@]}" -ne "${#OUTPUT_DIRS[@]}" ]; then
 fi
 
 ###############################################################################
+# Convert boolean parameters to lowercase
+###############################################################################
+if [ "$PRE_TRAIN" = true ]; then
+    PRE_TRAIN_BOOL="True"
+else
+    PRE_TRAIN_BOOL="False"
+fi
+
+if [ "$BURN_IN" = true ]; then
+    BURN_IN_BOOL="True"
+else
+    BURN_IN_BOOL="False"
+fi
+
+###############################################################################
 # RUN
 ###############################################################################
 # Run the Python script with the specified arguments
@@ -82,12 +109,17 @@ for i in "${!WEIGHTS[@]}"; do
         if [ -z "$WEIGHT" ]; then
             python pseudo_labeling_train_net.py --use_gpu $USE_GPU --config $CONFIG_FILE  \
                 OUTPUT_DIR $OUTPUT_DIR \
+                MODEL.WEIGHTS $WEIGHT \
                 SOLVER.MAX_ITER $ITERS \
                 SOLVER.IMS_PER_BATCH $IMS_PER_BATCH \
                 DATASETS.TEST "$DATASET" \
                 DATASETS.TRAIN "$TRAIN_DATASET" \
                 PSEUDO_LABELING.TRAIN_PERC $TRAIN_PERC \
+                PSEUDO_LABELING.PRE_TRAIN $PRE_TRAIN_BOOL \
+                PSEUDO_LABELING.PRE_TRAIN_ITERS $PRE_TRAIN_ITERS \
+                PSEUDO_LABELING.BURN_IN $BURN_IN_BOOL \
                 PSEUDO_LABELING.BURN_IN_ITERS $BURN_IN_ITERS \
+                PSEUDO_LABELING.BURN_IN_STUDENT_WEIGHTS $BURN_IN_WEIGHTS \
                 PSEUDO_LABELING.METRIC_THRESHOLD $METRIC_THRESHOLD \
                 PSEUDO_LABELING.CLASS_CONFIDENCE_THRESHOLD $CLASS_THRESHOLD \
                 PSEUDO_LABELING.PSEUDO_UPDATE_FREQ $EMA_UPDATE \
@@ -105,7 +137,11 @@ for i in "${!WEIGHTS[@]}"; do
                 DATASETS.TEST "$DATASET" \
                 DATASETS.TRAIN "$TRAIN_DATASET" \
                 PSEUDO_LABELING.TRAIN_PERC $TRAIN_PERC \
+                PSEUDO_LABELING.PRE_TRAIN $PRE_TRAIN_BOOL \
+                PSEUDO_LABELING.PRE_TRAIN_ITERS $PRE_TRAIN_ITERS \
+                PSEUDO_LABELING.BURN_IN $BURN_IN_BOOL \
                 PSEUDO_LABELING.BURN_IN_ITERS $BURN_IN_ITERS \
+                PSEUDO_LABELING.BURN_IN_STUDENT_WEIGHTS $BURN_IN_WEIGHTS \
                 PSEUDO_LABELING.METRIC_THRESHOLD $METRIC_THRESHOLD \
                 PSEUDO_LABELING.CLASS_CONFIDENCE_THRESHOLD $CLASS_THRESHOLD \
                 PSEUDO_LABELING.PSEUDO_UPDATE_FREQ $EMA_UPDATE \
@@ -126,7 +162,11 @@ for i in "${!WEIGHTS[@]}"; do
             DATASETS.TEST "$DATASET" \
             DATASETS.TRAIN "$TRAIN_DATASET" \
             PSEUDO_LABELING.TRAIN_PERC $TRAIN_PERC \
+            PSEUDO_LABELING.PRE_TRAIN $PRE_TRAIN_BOOL \
+            PSEUDO_LABELING.PRE_TRAIN_ITERS $PRE_TRAIN_ITERS \
+            PSEUDO_LABELING.BURN_IN $BURN_IN_BOOL \
             PSEUDO_LABELING.BURN_IN_ITERS $BURN_IN_ITERS \
+            PSEUDO_LABELING.BURN_IN_STUDENT_WEIGHTS $BURN_IN_WEIGHTS \
             PSEUDO_LABELING.METRIC_THRESHOLD $METRIC_THRESHOLD \
             PSEUDO_LABELING.CLASS_CONFIDENCE_THRESHOLD $CLASS_THRESHOLD \
             PSEUDO_LABELING.PSEUDO_UPDATE_FREQ $EMA_UPDATE \
@@ -140,3 +180,6 @@ for i in "${!WEIGHTS[@]}"; do
         exit 1
     fi
 done
+
+
+
