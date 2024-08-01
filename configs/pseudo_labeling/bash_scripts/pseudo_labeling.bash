@@ -2,7 +2,7 @@
 ###############################################################################
 # SET TRAIN OR TEST MODE
 ###############################################################################
-MODE="train"  # Set to "train" or "test"
+MODE="test"  # Set to "train" or "test"
 
 ###############################################################################
 # CONFIGURE TRAIN AND TEST PARAMS 
@@ -20,14 +20,14 @@ NUM_CLASSES=1
 # Pseudo labeling conditional setup
 PRE_TRAIN=false
 PRE_TRAIN_ITERS=0
-BURN_IN=false
+BURN_IN=true
 BURN_IN_ITERS=0
 
 # Pseudo labeling params
 METRIC_THRESHOLD=0.50
 CLASS_THRESHOLD=0.5
 EMA_UPDATE=20
-EMA_KEEP_RATE=0.998
+EMA_KEEP_RATE=0.999
 METRIC_USE="static"
 METRIC_OFFSET=0.05
  
@@ -46,14 +46,14 @@ TRAIN_DATASET="('jersey_train',)"
 VAL_DATASET="('jersey_val',)"
 
 TEST_WEIGHTS=(
-    "outputs/ps_dev_testing/pseudo_labeling/burn_in_to_dist_test/best_model.pth"
+    "outputs/ps_dev_testing/pseudo_labeling/burn_in_to_dist_test_2/distillation_best_model.pth"
     #"outputs/No_Burn_in_040/TEST_2/best_model.pth"
     #"outputs/No_Burn_in_040/TEST_3/best_model.pth"
 )
 TEST_DATASET="('jersey_test',)"
 
 OUTPUT_DIRS=(
-    "outputs/ps_dev_testing/pseudo_labeling/burn_in_to_dist_test"
+    "outputs/ps_dev_testing/pseudo_labeling/burn_in_to_dist_test_2"
     #"outputs/No_Burn_in_040/TEST_2"
     #"outputs/No_Burn_in_040/TEST_3"
 )

@@ -72,7 +72,7 @@ def main(config_path, weights_path, images_dir, outputs_dir):
 if __name__ == "__main__":
     main(
         "configs/pseudo_labeling/config_files/test_2.yaml",
-        "outputs/ps_dev_testing/pseudo_labeling/100_epoch_bs8/best_model.pth",
+        "outputs/ps_dev_testing/pseudo_labeling/burn_in_to_dist_test_2/distillation_best_model.pth",
         "datasets/jr_v5_unlabeled_data",
-        "inference_out/pseudo_labeling_dif_4"
+        "inference_out/distillation_inference"
     )

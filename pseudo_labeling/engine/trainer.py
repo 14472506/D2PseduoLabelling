@@ -109,7 +109,7 @@ class PseudoTrainer(DefaultTrainer):
 
         self.max_iter = cfg.SOLVER.MAX_ITER
         self.pre_training = cfg.PSEUDO_LABELING.PRE_TRAIN
-        self.burn_in = cfg.PSEUDO_LABELING.BURN_IN_ITERS
+        self.burn_in = cfg.PSEUDO_LABELING.BURN_IN
         self.cfg = cfg
 
         # register hooks
@@ -203,7 +203,7 @@ class PseudoTrainer(DefaultTrainer):
         self.validation_evaluator = COCOEvaluator(dataset_name, output_dir=cfg.OUTPUT_DIR)
         def eval_function():
             return inference_on_dataset(self.model, self.val_loader, self.validation_evaluator)
-        ret.append(EvalHook(cfg.TEST.EVAL_PERIOD, eval_function, self.checkpointer))
+        ret.append(EvalHook(cfg, cfg.TEST.EVAL_PERIOD, eval_function, self.checkpointer))
         
         # back to other 
         if comm.is_main_process():
@@ -274,12 +274,15 @@ class PseudoTrainer(DefaultTrainer):
                     # Load student weights
                     DetectionCheckpointer(self.model).load(self.cfg.PSEUDO_LABELING.BURN_IN_STUDENT_WEIGHTS)
             # If in distillation range with burn-in present
-            elif self.burn_in and self.iter > self.cfg.PSEUDO_LABELING.PRE_TRAIN_ITERS + self.cfg.PSEUDO_LABELING.BURN_IN_ITERS:
+            elif self.burn_in and self.iter >= self.cfg.PSEUDO_LABELING.PRE_TRAIN_ITERS + self.cfg.PSEUDO_LABELING.BURN_IN_ITERS:
                 # Distillation after burn-in, so load best student. Teacher is already in place, in the first instance, afterward carry out distillation with given EMA keep rate.
                 if self.iter == self.cfg.PSEUDO_LABELING.PRE_TRAIN_ITERS + self.cfg.PSEUDO_LABELING.BURN_IN_ITERS:
                     # Load best student weights
+                    if not self.pre_training:
+                        self._update_teacher_model(keep_rate=0.00)
+
                     print("INIT POST BURN IN DISTILATION, LOADING BEST BURN IN WEIGHTS")
-                    DetectionCheckpointer(self.model).load(os.path.join(self.cfg.OUTPUT_DIR, "best_model.pth"))
+                    DetectionCheckpointer(self.model).load(os.path.join(self.cfg.OUTPUT_DIR, "burn_in_best_model.pth"))
                 elif (self.iter - self.cfg.PSEUDO_LABELING.PRE_TRAIN_ITERS + self.cfg.PSEUDO_LABELING.BURN_IN_ITERS) % self.cfg.PSEUDO_LABELING.PSEUDO_UPDATE_FREQ == 0:
                     self._update_teacher_model(keep_rate=self.cfg.PSEUDO_LABELING.EMA_KEEP_RATE)
             # If there is no burn-in
@@ -320,65 +323,6 @@ class PseudoTrainer(DefaultTrainer):
 
         self.optimizer.zero_grad()
         losses.backward()
-        self.optimizer.step()
-
-    def old_run_step(self):
-        """
-        Details
-        """
-        # set training iter
-        self._trainer.iter = self.iter
-
-        # start time
-        start = time.perf_counter()
-
-        # get labeled data
-        labeled_data = next(self._trainer._labeled_data_loader_iter)
-        data_time = time.perf_counter() - start
-        
-        if self.iter < self.cfg.PSEUDO_LABELING.BURN_IN_ITERS:
-            # forward pass on model
-            loss_dict = self.model(labeled_data)
-            losses = sum(loss_dict.values())
-        else:
-            # condition based teacher update
-            if self.iter == self.cfg.PSEUDO_LABELING.BURN_IN_ITERS:
-                self._update_teacher_model(keep_rate=0.00)
-            elif(self.iter - self.cfg.PSEUDO_LABELING.BURN_IN_ITERS) % self.cfg.PSEUDO_LABELING.PSEUDO_UPDATE_FREQ == 0:
-                self._update_teacher_model(keep_rate = self.cfg.PSEUDO_LABELING.EMA_KEEP_RATE)
-
-            # get pseduo labeled data
-            pseudo_labeled_data = self.pseudo_label()
-
-            # forward pass of on labeled and unlabeled data
-            record_dict = {}
-            labeled_loss_dict = self.model(labeled_data)
-            unlabeled_loss_dict = self.model(pseudo_labeled_data)
-            record_dict["labeled"] = labeled_loss_dict
-            record_dict["unlabeled"] = unlabeled_loss_dict
-
-            # process losses
-            loss_dict = {}
-
-            for key in record_dict.keys():
-                # weighting here later
-                loss_dict[key] = sum(record_dict[key].values())
-
-            losses = sum(loss_dict.values())
-
-        if self.cfg.PSEUDO_LABELING.METRIC_USE == "dynamic":
-            if self.iter % self.cfg.TEST.EVAL_PERIOD == 0:
-                if self.iter != 0:
-                    self.metric_thresh = self.metric_mean_val - self.cfg.PSEUDO_LABELING.METRIC_OFFSET
-                    print("### NEW_THRESH ######################################")
-                    print(self.metric_thresh)
-                    self.metric_mean_count = 0
-                    self.metric_mean_acc = 0
-
-
-        self.optimizer.zero_grad()
-        losses.backward()
-        #self.after_backward()
         self.optimizer.step()
     ###############################################################################################
 
