@@ -53,6 +53,7 @@ INPUT:
   - 800
   MIN_SIZE_TRAIN_SAMPLING: choice
   RANDOM_FLIP: horizontal
+  DATASET_MAPPER_NAME: "mrcnn"
 
 # =============================================================================
 # MODEL

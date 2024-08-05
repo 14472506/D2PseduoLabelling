@@ -21,10 +21,15 @@ from detectron2.engine import default_argument_parser, default_setup, launch
 from detectron2 import model_zoo
 # local
 from pseudo_labeling.engine.trainer import PseudoTrainer
+from mask2former.config import add_maskformer2_config
 from pseudo_labeling.config import add_pseudo_config
-from pseudo_labeling.modelling.my_rcnn import MyGeneralizedRCNN
-from pseudo_labeling.modelling import mask_head 
-from pseudo_labeling.modelling import custom_roi
+from mask2former import MaskFormer
+
+#from pseudo_labeling.engine.trainer import PseudoTrainer
+#from pseudo_labeling.config import add_pseudo_config
+#from pseudo_labeling.modelling.my_rcnn import MyGeneralizedRCNN
+#from pseudo_labeling.modelling import mask_head 
+#from pseudo_labeling.modelling import custom_roi
 
 # === functions === #
 def parse_args():
@@ -44,6 +49,7 @@ def setup(args):
     """ Initialise config and ammend based on command line arguments """
     cfg = get_cfg()
     # adding argments to base config to accomodate pseudo labeling
+    add_maskformer2_config(cfg)
     add_pseudo_config(cfg)
     cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)

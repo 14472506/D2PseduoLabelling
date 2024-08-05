@@ -115,22 +115,22 @@ def mask_rcnn_loss(pred_mask_logits: torch.Tensor, instances: List[Instances], v
             vis_mask = torch.stack([vis_mask] * 3, axis=0)
             storage.put_image(name + f" ({idx})", vis_mask)
     
-    if len(gt_metric_scores) == 0:
-        mask_loss = F.binary_cross_entropy_with_logits(pred_mask_logits, gt_masks, reduction="mean")
-        return mask_loss
-    else:
-        dice = dice_loss(pred_mask_logits, gt_masks)
-        affinity = affinity_loss(pred_mask_logits, gt_masks, reduction="mean")
-
-        max_size = max(tensor.size(0) for tensor in gt_metric_scores)
-        padded_tensors = [F.pad(tensor, (0, max_size - tensor.size(0))) for tensor in gt_metric_scores]
-        stacked_tensors = torch.stack(padded_tensors)
-        mean_met_score = torch.mean(stacked_tensors, dim=0)
-
-        # modified here, make it perminant if it works?
-        mask_sup_loss = torch.mean(0.5 * dice + 0.1 * affinity)
-        print(mask_sup_loss)
-        return mask_sup_loss
+    #if len(gt_metric_scores) == 0:
+    mask_loss = F.binary_cross_entropy_with_logits(pred_mask_logits, gt_masks, reduction="mean")
+    return mask_loss
+    #else:
+    #    dice = dice_loss(pred_mask_logits, gt_masks)
+    #    affinity = affinity_loss(pred_mask_logits, gt_masks, reduction="mean")
+    #
+    #    max_size = max(tensor.size(0) for tensor in gt_metric_scores)
+    #    padded_tensors = [F.pad(tensor, (0, max_size - tensor.size(0))) for tensor in gt_metric_scores]
+    #    stacked_tensors = torch.stack(padded_tensors)
+    #    mean_met_score = torch.mean(stacked_tensors, dim=0)
+    #
+    #    # modified here, make it perminant if it works?
+    #    mask_sup_loss = torch.mean(0.5 * dice + 0.1 * affinity)
+    #    print(mask_sup_loss)
+    #    return mask_sup_loss
 
 def mask_rcnn_inference(pred_mask_logits: torch.Tensor, pred_instances: List[Instances]):
     """

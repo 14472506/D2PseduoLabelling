@@ -1,0 +1,197 @@
+CUDNN_BENCHMARK: false
+# =============================================================================
+# DATALOADER
+# =============================================================================
+DATALOADER:
+  FILTER_EMPTY_ANNOTATIONS: True
+  NUM_WORKERS: 0
+  SAMPLER_TRAIN: TrainingSampler
+  
+# =============================================================================
+# DATASET
+# =============================================================================
+DATASETS:
+  PRECOMPUTED_PROPOSAL_TOPK_TEST: 1000
+  PRECOMPUTED_PROPOSAL_TOPK_TRAIN: 2000
+  PROPOSAL_FILES_TEST: []
+  PROPOSAL_FILES_TRAIN: []
+  TEST:
+  - jersey_royal_val
+  #- jersey_royal_test
+  TRAIN:
+  - jersey_train
+
+# =============================================================================
+# GLOBAL
+# =============================================================================
+GLOBAL:
+  HACK: 1.0
+
+# =============================================================================
+# INPUT
+# =============================================================================
+INPUT:
+  IMAGE_SIZE: 1024
+  MIN_SCALE: 0.1
+  MAX_SCALE: 2.0
+  FORMAT: "RGB"
+  DATASET_MAPPER_NAME: "m2f"
+  MIN_SIZE_TRAIN_SAMPLING: choice
+  RANDOM_FLIP: horizontal
+
+# =============================================================================
+# MODEL
+# =============================================================================
+MODEL:
+  BACKBONE:
+    FREEZE_AT: 0
+    NAME: "build_resnet_backbone"
+  WEIGHTS: "detectron2://ImageNetPretrained/torchvision/R-50.pkl"
+  PIXEL_MEAN: [123.675, 116.280, 103.530]
+  PIXEL_STD: [58.395, 57.120, 57.375]
+  RESNETS:
+    DEPTH: 50
+    STEM_OUT_CHANNELS: 64
+    STRIDE_IN_1X1: False
+    OUT_FEATURES: ["res2", "res3", "res4", "res5"]
+    # NORM: "SyncBN"
+  META_ARCHITECTURE: "MaskFormer"
+  SEM_SEG_HEAD:
+    NAME: "MaskFormerHead"
+    IGNORE_VALUE: 255
+    NUM_CLASSES: 1
+    LOSS_WEIGHT: 1.0
+    CONVS_DIM: 256
+    MASK_DIM: 256
+    NORM: "GN"
+    # pixel decoder
+    PIXEL_DECODER_NAME: "MSDeformAttnPixelDecoder"
+    IN_FEATURES: ["res2", "res3", "res4", "res5"]
+    DEFORMABLE_TRANSFORMER_ENCODER_IN_FEATURES: ["res3", "res4", "res5"]
+    COMMON_STRIDE: 4
+    TRANSFORMER_ENC_LAYERS: 6
+  MASK_FORMER:
+    TRANSFORMER_DECODER_NAME: "MultiScaleMaskedTransformerDecoder"
+    TRANSFORMER_IN_FEATURE: "multi_scale_pixel_decoder"
+    DEEP_SUPERVISION: True
+    NO_OBJECT_WEIGHT: 0.1
+    CLASS_WEIGHT: 2.0
+    MASK_WEIGHT: 5.0
+    DICE_WEIGHT: 5.0
+    HIDDEN_DIM: 256
+    NUM_OBJECT_QUERIES: 100
+    NHEADS: 8
+    DROPOUT: 0.0
+    DIM_FEEDFORWARD: 2048
+    ENC_LAYERS: 0
+    PRE_NORM: False
+    ENFORCE_INPUT_PROJ: False
+    SIZE_DIVISIBILITY: 32
+    DEC_LAYERS: 10  # 9 decoder layers, add one for the loss on learnable query
+    TRAIN_NUM_POINTS: 12544
+    OVERSAMPLE_RATIO: 3.0
+    IMPORTANCE_SAMPLE_RATIO: 0.75
+    TEST:
+      SEMANTIC_ON: False
+      INSTANCE_ON: True
+      PANOPTIC_ON: False
+      OVERLAP_THRESHOLD: 0.8
+      OBJECT_MASK_THRESHOLD: 0.8
+# =============================================================================
+# PSEUDO LABELING
+# =============================================================================
+PSEUDO_LABELING:
+  TRAIN_PERC: 10
+  DATASET:
+  - unlabeled_data
+  PRE_TRAIN: false
+  PRE_TRAIN_ITERS: 0
+  BURN_IN: false
+  BURN_IN_ITERS: 0
+  BURN_IN_STUDENT_WEIGHTS: "" 
+  PSEUDO_UPDATE_FREQ: 320 
+  EMA_KEEP_RATE: 0.999
+  METRIC_THRESHOLD: 0.5
+  CLASS_CONFIDENCE_THRESHOLD: 0.5
+  METRIC_USE: static
+  METRIC_OFFSET: 0.06
+
+# =============================================================================
+# OUTPUT DIR
+# =============================================================================
+OUTPUT_DIR: outputs/DEV_DELETE_THIS
+
+# =============================================================================
+# SEED
+# =============================================================================
+SEED: -1
+
+# =============================================================================
+# SOLVER
+# =============================================================================
+SOLVER:
+  OPTIMIZER: ADAM
+  AMP:
+    ENABLED: false
+  BASE_LR: 5.0e-05
+  #BASE_LR_END: 0.0
+  BIAS_LR_FACTOR: 1.0
+  CHECKPOINT_PERIOD: 50000
+  CLIP_GRADIENTS:
+    CLIP_TYPE: value
+    CLIP_VALUE: 1.0
+    ENABLED: false
+    NORM_TYPE: 2.0
+  GAMMA: 0.1
+  IMS_PER_BATCH: 4
+  LR_SCHEDULER_NAME: WarmupMultiStepLR
+  MAX_ITER: 144100 #127200
+  MOMENTUM: 0.9
+  NESTEROV: false
+  #NUM_DECAYS: 3
+  REFERENCE_WORLD_SIZE: 0
+  #RESCALE_INTERVAL: false
+  STEPS:
+  - 200000
+  - 250000
+  WARMUP_FACTOR: 0.001
+  WARMUP_ITERS: 0                       # Default 1000 seems to hinder initial training?
+  WARMUP_METHOD: linear
+  WEIGHT_DECAY: 0.0001
+  WEIGHT_DECAY_BIAS: null
+  WEIGHT_DECAY_NORM: 0.0
+
+# =============================================================================
+# TEST
+# =============================================================================
+TEST:
+  AUG:
+    ENABLED: false
+    FLIP: true
+    MAX_SIZE: 1300
+    MIN_SIZES:
+    - 400
+    - 500
+    - 600
+    - 700
+    - 800
+    - 900
+    - 1000
+    - 1100
+    - 1200
+  DETECTIONS_PER_IMAGE: 100
+  EVAL_PERIOD: 1778
+  EXPECTED_RESULTS: []
+  KEYPOINT_OKS_SIGMAS: []
+  PRECISE_BN:
+    ENABLED: false
+    NUM_ITER: 200
+# =============================================================================
+# VERSION
+# =============================================================================
+VERSION: 2
+
+# =============================================================================
+# VIS PERIOD
+# =============================================================================
+VIS_PERIOD: 0

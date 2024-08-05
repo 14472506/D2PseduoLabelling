@@ -8,3 +8,8 @@ __pycache__/
 *.pth
 *.tar
 /detectron2
+*.run
+*.deb
+*.pub
+/sbatch_logs
+/downloads

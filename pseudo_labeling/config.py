@@ -11,6 +11,8 @@ def add_pseudo_config(cfg):
     _C = cfg
     _C.SOLVER.OPTIMIZER = "SGD"
 
+    _C.INPUT.DATASET_MAPPER_NAME = "mrcnn"
+
     _C.PSEUDO_LABELING = CN()
     _C.PSEUDO_LABELING.TRAIN_PERC = 10
     _C.PSEUDO_LABELING.DATASET = ("",)

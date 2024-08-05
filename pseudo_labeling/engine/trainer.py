@@ -45,6 +45,8 @@ from pseudo_labeling.engine.hooks import EvalHook
 from pseudo_labeling.solver.optimizers import build_optimizer
 from pseudo_labeling.solver.losses import calculate_affinity_mask
 
+#from mask2former.data.dataset_mappers.coco_instance_new_baseline_dataset_mapper import COCOInstanceNewBaselineDatasetMapper
+
 # classes 
 class PseudoTrainer(DefaultTrainer):
     """
@@ -137,8 +139,11 @@ class PseudoTrainer(DefaultTrainer):
         if "my_coco_train" in cfg.DATASETS.TRAIN:
             my_coco_train(cfg.PSEUDO_LABELING.TRAIN_PERC)
             register_unlabeled()
-            
-        return build_pseudo_train_loader(cfg)
+
+        if cfg.INPUT.DATASET_MAPPER_NAME == "m2f":
+            return build_pseudo_train_loader(cfg, labeled_mapper=COCOInstanceNewBaselineDatasetMapper(cfg, True )) 
+        else:
+            return build_pseudo_train_loader(cfg)
     
     @classmethod
     # THIS NEEDS CHANGING TO WORK WITH THE BASH FILES
@@ -361,7 +366,7 @@ class PseudoTrainer(DefaultTrainer):
                 cf_pred_boxes = []
                 cf_pred_classes = []
 
-                for j in range(len(pred_scores)):
+                for j in range(len(pred_scores)):    
                     if pred_scores[j] < self.cfg.PSEUDO_LABELING.CLASS_CONFIDENCE_THRESHOLD:
                         continue
                     cf_pred_scores.append(pred_scores[j])
@@ -384,7 +389,7 @@ class PseudoTrainer(DefaultTrainer):
                     # Check mask
                     binary_mask = np.where(mask >= 0.5, 1, 0)
                     area = np.count_nonzero(binary_mask)
-
+                    
                     if area < 50:
                         continue
 
@@ -469,17 +474,21 @@ class PseudoTrainer(DefaultTrainer):
         Details
         """
         student_model_dict = self.model.state_dict()
+        teacher_model_dict = self.model_teacher.state_dict()
 
         new_teacher_dict = OrderedDict()
-        for key, value in self.model_teacher.state_dict().items():
+        for key, value in teacher_model_dict.items():
             if key in student_model_dict.keys():
-                new_teacher_dict[key] = (
-                    student_model_dict[key] *
-                    (1 - keep_rate) + value * keep_rate
-                )
+                # THIS IS HACKY AS HELL BUT IT SEEMS TO WORK SO DONT QUESTION IT
+                if "pixel_decoder" in key:
+                    # Modify key to remove pixel_decoder
+                    mod_key = key.replace("pixel_decoder.", "")
+                    new_teacher_dict[mod_key] = (student_model_dict[key] * (1 - keep_rate) + value * keep_rate)
+                else:
+                    new_teacher_dict[key] = (student_model_dict[key] * (1 - keep_rate) + value * keep_rate)
             else:
                 raise Exception("{} is not found in student model".format(key))
-
+        
         self.model_teacher.load_state_dict(new_teacher_dict)
 
     # =========================================================================
