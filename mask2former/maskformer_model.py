@@ -89,6 +89,9 @@ class MaskFormer(nn.Module):
         self.instance_on = instance_on
         self.panoptic_on = panoptic_on
         self.test_topk_per_image = test_topk_per_image
+        
+        # pseudo labeling flag
+        self.pseudo_labeling = False
 
         if not self.semantic_on:
             assert self.sem_seg_postprocess_before_inference
@@ -265,10 +268,17 @@ class MaskFormer(nn.Module):
         h_pad, w_pad = images.tensor.shape[-2:]
         new_targets = []
         for targets_per_image in targets:
-            # pad gt
-            gt_masks = targets_per_image.gt_masks
-            padded_masks = torch.zeros((gt_masks.shape[0], h_pad, w_pad), dtype=gt_masks.dtype, device=gt_masks.device)
-            padded_masks[:, : gt_masks.shape[1], : gt_masks.shape[2]] = gt_masks
+            # Check if the gt_masks are of type BitMasks
+            if isinstance(targets_per_image.gt_masks, BitMasks):
+                gt_masks_tensor = targets_per_image.gt_masks.tensor
+                padded_masks = torch.zeros((gt_masks_tensor.shape[0], h_pad, w_pad), dtype=gt_masks_tensor.dtype, device=gt_masks_tensor.device)
+                padded_masks[:, :gt_masks_tensor.shape[1], :gt_masks_tensor.shape[2]] = gt_masks_tensor
+            else:
+                # Handle other mask types
+                gt_masks = targets_per_image.gt_masks
+                padded_masks = torch.zeros((gt_masks.shape[0], h_pad, w_pad), dtype=gt_masks.dtype, device=gt_masks.device)
+                padded_masks[:, :gt_masks.shape[1], :gt_masks.shape[2]] = gt_masks
+
             new_targets.append(
                 {
                     "labels": targets_per_image.gt_classes,
@@ -368,8 +378,11 @@ class MaskFormer(nn.Module):
 
         result = Instances(image_size)
         # mask (before sigmoid)
-        #result.pred_masks = (mask_pred > 0).float()
-        result.pred_masks = mask_pred.sigmoid()
+        # Modifying to add pseudo labeling functionality
+        if self.pseudo_labeling:
+            result.pred_masks = mask_pred.sigmoid()
+        else:
+            result.pred_masks = (mask_pred > 0).float()
         result.pred_boxes = Boxes(torch.zeros(mask_pred.size(0), 4))
         # Uncomment the following to get boxes from masks (this is slow)
         # result.pred_boxes = BitMasks(mask_pred > 0).get_bounding_boxes()

@@ -4,13 +4,13 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=16G
 #SBATCH --time=12:00:00
-#SBATCH --output=output_%j.log
+#SBATCH --output=sbatch_logs/output_m2f_065_burnin_%j.log
 
 # Load required modules (if any)
 # module load docker
 
 # Load docker container
-docker load -i brhurst.tar
+docker load -i setup/brhurst.tar
 
 # Run docker container
 docker run --rm --device /dev/nvidia0:/dev/nvidia0 --device /dev/nvidiactl:/dev/nvidiactl --device /dev/nvidia-uvm:/dev/nvidia-uvm -v $(pwd):/workspace brhurst:latest bash -c "
@@ -36,7 +36,7 @@ pip install -r mask2former/requirements.txt && \
 cd mask2former/modeling/pixel_decoder/ops && \
 sh make.sh && \
 cd ../../../../ && \
-bash configs/pseudo_labeling/bash_scripts/m2f_pseudo_labeling.bash"
+bash configs/pseudo_labeling/bash_scripts/m2f_pseudo_labeling_1.bash"
 "
 
 

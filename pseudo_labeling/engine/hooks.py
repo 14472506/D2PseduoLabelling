@@ -49,7 +49,11 @@ class EvalHook(HookBase):
             self.stage = "distillation"
 
     def _do_eval(self):
+        prior_state = self.stage
         self._update_stage()  # Ensure the stage is updated before evaluation
+        new_state = self.stage
+        if prior_state != new_state:
+            self.best_map = 0
         results = self._func()
         current_map = results["segm"]["AP"]
         if current_map > self.best_map:

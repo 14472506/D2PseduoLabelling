@@ -70,7 +70,7 @@ def main(config_path, weights_path, images_dir, outputs_dir):
 if __name__ == "__main__":
     main(
         "configs/pseudo_labeling/config_files/ps_m2f.yaml",
-        "outputs/m2f_test/baseline/pre_training_best_model.pth",
+        "outputs/m2f_test/distillation_sbatch/distillation_best_model.pth",
         "datasets/jr_v5_unlabeled_data",
-        "inference_out/m2f_baseline"
+        "inference_out/m2f_distillation"
     )

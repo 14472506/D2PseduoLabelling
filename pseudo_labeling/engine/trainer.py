@@ -14,6 +14,7 @@ import cv2
 import copy
 import statistics
 import matplotlib.pyplot as plt
+from torchvision.transforms import functional as F
 
 import torch
 
@@ -27,7 +28,7 @@ from detectron2.engine import hooks
 from detectron2.data import build_detection_test_loader
 from detectron2.data import MetadataCatalog
 from detectron2.utils.events import EventStorage
-from detectron2.structures import PolygonMasks, Boxes, BoxMode, Instances
+from detectron2.structures import PolygonMasks, Boxes, BoxMode, Instances, BitMasks
 from detectron2.modeling import build_model
 
 from detectron2.modeling.roi_heads.mask_head import ROI_MASK_HEAD_REGISTRY
@@ -283,11 +284,8 @@ class PseudoTrainer(DefaultTrainer):
                 # Distillation after burn-in, so load best student. Teacher is already in place, in the first instance, afterward carry out distillation with given EMA keep rate.
                 if self.iter == self.cfg.PSEUDO_LABELING.PRE_TRAIN_ITERS + self.cfg.PSEUDO_LABELING.BURN_IN_ITERS:
                     # Load best student weights
-                    if not self.pre_training:
-                        self._update_teacher_model(keep_rate=0.00)
-
-                    print("INIT POST BURN IN DISTILATION, LOADING BEST BURN IN WEIGHTS")
                     DetectionCheckpointer(self.model).load(os.path.join(self.cfg.OUTPUT_DIR, "burn_in_best_model.pth"))
+                    self._update_teacher_model(keep_rate=0.00)
                 elif (self.iter - self.cfg.PSEUDO_LABELING.PRE_TRAIN_ITERS + self.cfg.PSEUDO_LABELING.BURN_IN_ITERS) % self.cfg.PSEUDO_LABELING.PSEUDO_UPDATE_FREQ == 0:
                     self._update_teacher_model(keep_rate=self.cfg.PSEUDO_LABELING.EMA_KEEP_RATE)
             # If there is no burn-in
@@ -300,7 +298,10 @@ class PseudoTrainer(DefaultTrainer):
                     self._update_teacher_model(keep_rate=self.cfg.PSEUDO_LABELING.EMA_KEEP_RATE)
 
             # Get pseudo-labeled data
-            pseudo_labeled_data = self.pseudo_label()
+            if self.cfg.INPUT.DATASET_MAPPER_NAME == "m2f":
+                pseudo_labeled_data = self.m2f_pseudo_label()
+            else:
+                pseudo_labeled_data = self.mrcnn_pseudo_label()
 
             # Forward pass on labeled and unlabeled data
             record_dict = {}
@@ -313,7 +314,10 @@ class PseudoTrainer(DefaultTrainer):
             loss_dict = {}
             for key in record_dict.keys():
                 # Weighting here later
-                loss_dict[key] = sum(record_dict[key].values())
+                if key == "unlabeled":
+                    loss_dict[key] = 2*sum(record_dict[key].values())
+                else:
+                    loss_dict[key] = sum(record_dict[key].values())
 
             losses = sum(loss_dict.values())
 
@@ -335,7 +339,7 @@ class PseudoTrainer(DefaultTrainer):
     # Pseudo Labeling
     # =========================================================================
 
-    def pseudo_label(self):
+    def mrcnn_pseudo_label(self):
         """
         Details
         """    
@@ -393,10 +397,15 @@ class PseudoTrainer(DefaultTrainer):
                     if area < 50:
                         continue
 
-                    # Get volumetric symmetry metric
+                    ## Get volumetric symmetry metric - Logit_symmetry
                     higher_volume = mask[mask >= 0.5] - 0.5
                     lower_volume = np.minimum(mask, 0.5)
                     vol_sym = conf_score * (higher_volume.sum() / lower_volume.sum()) ** 2
+
+                    # Other
+                    #good_volume = mask[mask >= 0.5]
+                    #bad_volume = mask
+                    #vol_sym = conf_score * (good_volume.sum()/bad_volume.sum())**2
 
                     if vol_sym < self.metric_thresh:
                         continue
@@ -454,6 +463,135 @@ class PseudoTrainer(DefaultTrainer):
         self.metric_mean_val = self.metric_mean_acc/self.metric_mean_count
         # Return the batch of unlabeled data with pseudo labels
         return unlabeled_data
+
+    def m2f_pseudo_label(self):
+        """
+        Details
+        """
+        got_pseudo_label = False
+        while not got_pseudo_label:
+            # Get predictions from unlabeled data
+            unlabeled_data = next(self._trainer._unlabeled_data_loader_iter)
+    
+            # Assuming the batch size is greater than 1
+            student_images = [data[1]["strong_image"] for data in unlabeled_data]
+            unlabeled_data = [data[0] for data in unlabeled_data]
+    
+            batch_preds = self.model_teacher(unlabeled_data)
+    
+            metric_values = []
+            # Process predictions for each image in the batch
+            for i, preds in enumerate(batch_preds):
+                preds = preds["instances"].to("cpu")
+    
+                pred_scores = preds.scores.detach().numpy()
+                pred_masks = preds.pred_masks.detach().numpy()
+                pred_boxes = preds.pred_boxes.tensor.detach().numpy()
+                pred_classes = preds.pred_classes.detach().numpy()
+    
+                # Filter masks by prediction score
+                cf_pred_scores = []
+                cf_pred_masks = []
+                cf_pred_boxes = []
+                cf_pred_classes = []
+    
+                for j in range(len(pred_scores)):
+                    if pred_scores[j] < self.cfg.PSEUDO_LABELING.CLASS_CONFIDENCE_THRESHOLD:
+                        continue
+                    cf_pred_scores.append(pred_scores[j])
+                    cf_pred_masks.append(pred_masks[j])
+                    cf_pred_boxes.append(pred_boxes[j])
+                    cf_pred_classes.append(pred_classes[j])
+    
+                # Filter masks by metric
+                mf_pred_scores = []
+                mf_pred_binary_masks = []
+                mf_pred_boxes = []
+                mf_pred_classes = []
+                mf_vol_sym = []
+    
+                for j in range(len(cf_pred_scores)):
+                    conf_score = cf_pred_scores[j]
+                    mask = cf_pred_masks[j]
+    
+                    # Check mask
+                    binary_mask = np.where(mask >= 0.5, 1, 0)
+                    area = np.count_nonzero(binary_mask)
+    
+                    if area < 50:
+                        continue
+    
+                    # Get volumetric symmetry metric
+                    higher_volume = mask[mask >= 0.5] - 0.5
+                    lower_volume = np.minimum(mask, 0.5)
+                    vol_sym = conf_score * (higher_volume.sum() / lower_volume.sum()) ** 2
+    
+                    if vol_sym < self.metric_thresh:
+                        continue
+    
+                    mf_pred_scores.append(cf_pred_scores[j])
+                    mf_pred_binary_masks.append(binary_mask)
+                    mf_pred_boxes.append(cf_pred_boxes[j])
+                    mf_pred_classes.append(cf_pred_classes[j])
+                    mf_vol_sym.append(vol_sym)
+    
+                if len(mf_pred_scores) == 0:
+                    continue
+    
+                # Data Post Processing
+                stacked_binary_masks = np.stack(mf_pred_binary_masks, axis=0)
+                binary_mask_tensor = torch.from_numpy(stacked_binary_masks).float()
+    
+                # Resize masks to fit the image size
+                image_shape = (unlabeled_data[i]["height"], unlabeled_data[i]["width"])
+                resized_masks = F.resize(binary_mask_tensor, image_shape, interpolation=F.InterpolationMode.NEAREST)
+    
+                # Create BitMasks from the resized masks tensor
+                bitmask_masks = BitMasks(resized_masks)
+    
+                # Create Instances object
+                mf_pred_boxes = np.array(mf_pred_boxes)
+                boxes = Boxes(torch.tensor(mf_pred_boxes).float())
+                instances = Instances(image_shape)
+                instances.gt_boxes = boxes
+                instances.gt_masks = bitmask_masks
+                instances.gt_classes = torch.tensor(mf_pred_classes)
+                instances.gt_metric_score = torch.tensor(mf_vol_sym)
+    
+                # Update unlabeled data with pseudo labels
+                unlabeled_data[i]["image"] = student_images[i]
+                unlabeled_data[i]["instances"] = instances
+                metric_values.extend(mf_vol_sym)
+    
+                got_pseudo_label = True
+    
+        self.metric_mean_count += 1
+        self.metric_mean_acc += statistics.mean(metric_values)
+        self.metric_mean_val = self.metric_mean_acc / self.metric_mean_count
+    
+        # Return the batch of unlabeled data with pseudo labels
+        return unlabeled_data
+
+    #def prepare_targets(self, targets, images):
+    #    h_pad, w_pad = images.tensor.shape[-2:]
+    #    new_targets = []
+    #    for targets_per_image in targets:
+    #        if isinstance(targets_per_image.gt_masks, BitMasks):
+    #            gt_masks_tensor = targets_per_image.gt_masks.tensor
+    #            print(f"gt_masks_tensor type: {type(gt_masks_tensor)}")
+    #            print(f"gt_masks_tensor shape: {gt_masks_tensor.shape}")
+    #        else:
+    #            raise ValueError("Expected gt_masks to be of type BitMasks")
+    #
+    #        padded_masks = torch.zeros((gt_masks_tensor.shape[0], h_pad, w_pad), dtype=gt_masks_tensor.dtype, device=gt_masks_tensor.device)
+    #        padded_masks[:, : gt_masks_tensor.shape[1], : gt_masks_tensor.shape[2]] = gt_masks_tensor
+    #        new_targets.append(
+    #            {
+    #                "labels": targets_per_image.gt_classes,
+    #                "masks": padded_masks,
+    #            }
+    #        )
+    #    return new_targets
     
     def masks_to_polygone_masks(self, masks):
         """ 

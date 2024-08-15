@@ -31,6 +31,7 @@ def main(cfg_path, weight_path, source_dir, targ_img_dir):
     predictor = DefaultPredictor(cfg)
 
     end_count = 0
+    predictor.model.pseudo_labeling = True
 
     for img_file in os.listdir(source_dir):
         # get prediction on valid images
@@ -91,7 +92,7 @@ def main(cfg_path, weight_path, source_dir, targ_img_dir):
             lower_volume = np.minimum(mask, 0.5)
             vol_sym = conf_score * (higher_volume.sum() / lower_volume.sum()) ** 2
 
-            if vol_sym > 0.7:
+            if vol_sym < 0.7:
                 continue
 
             mf_pred_scores.append(cf_pred_scores[j])
@@ -213,7 +214,7 @@ def main(cfg_path, weight_path, source_dir, targ_img_dir):
             # Save the colored mask image
             cv2.imwrite(mask_out_route, coloured_mask_img)
                 
-        if end_count > 1:
+        if end_count > 20:
             break
         end_count += 1
 
@@ -232,7 +233,7 @@ def setup(config_path, weights_path):
 if __name__ == "__main__":
     main(
         "configs/pseudo_labeling/config_files/ps_m2f.yaml",
-        "outputs/m2f_test/baseline/pre_training_best_model.pth",
+        "outputs/m2f_test/burn_in_sbatch/burn_in_best_model.pth",
         "datasets/jr_v5_unlabeled_data",
-        "results_store/applying_metric_to_m2f"
+        "results_store/m2f_burn_in"
     )

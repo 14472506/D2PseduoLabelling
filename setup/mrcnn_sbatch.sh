@@ -3,8 +3,8 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=16G
-#SBATCH --time=30:00:00
-#SBATCH --output=sbatch_logs/output_all_stages_3_%j.log
+#SBATCH --time=20:00:00
+#SBATCH --output=sbatch_logs/weighted_035_dist_9998_%j.log
 
 # Load required modules (if any)
 # module load docker
@@ -20,7 +20,7 @@ yes | pip uninstall detectron2 && \
 cd /workspace/detectron2 && \
 python -m pip install -e . && \
 cd /workspace && \
-configs/pseudo_labeling/bash_scripts/mrcnn_pseudo_labeling.bash
+configs/pseudo_labeling/bash_scripts/mrcnn_pseudo_labeling_3.bash
 "
 
 

@@ -11,30 +11,30 @@ MODE="train"  # Set to "train" or "test"
 CONFIG_FILE="configs/pseudo_labeling/config_files/ps_mrcnn.yaml"
 # All training params
 USE_GPU=0
-ITERS=66675
+ITERS=22225
 TRAIN_PERC=100
 IMS_PER_BATCH=8
 EVAL_PERIOD=225
 NUM_CLASSES=1
 
 # Pseudo labeling conditional setup
-PRE_TRAIN=true
-PRE_TRAIN_ITERS=22225
-BURN_IN=true
-BURN_IN_ITERS=22225
+PRE_TRAIN=false
+PRE_TRAIN_ITERS=0
+BURN_IN=false
+BURN_IN_ITERS=0
 
 # Pseudo labeling params
-METRIC_THRESHOLD=0.50
+METRIC_THRESHOLD=0.25
 CLASS_THRESHOLD=0.5
 EMA_UPDATE=20
-EMA_KEEP_RATE=0.997
+EMA_KEEP_RATE=0.9998
 METRIC_USE="static"
 METRIC_OFFSET=0.05
  
 
 # Define lists of weights and output directories
 TRAIN_WEIGHTS=(
-    "detectron2://COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x/137849600/model_final_f10217.pkl"
+    "outputs/ps_dev/added_weighting_025/burn_in_best_model.pth"
     #"outputs/New_DS_Baseline/TEST_2/best_model.pth"
     #"outputs/New_DS_Baseline/TEST_3/best_model.pth"
 )
@@ -46,14 +46,14 @@ TRAIN_DATASET="('jersey_train',)"
 VAL_DATASET="('jersey_val',)"
 
 TEST_WEIGHTS=(
-    "outputs/mrcnn_ps_exps/all_stages_3/best_mod.pth"
+    ""
     #"outputs/No_Burn_in_040/TEST_2/best_model.pth"
     #"outputs/No_Burn_in_040/TEST_3/best_model.pth"
 )
 TEST_DATASET="('jersey_test',)"
 
 OUTPUT_DIRS=(
-    "outputs/mrcnn_ps_exps/all_stages_3"
+    "outputs/ps_dev/added_weighting_025_9998"
     #"outputs/No_Burn_in_040/TEST_2"
     #"outputs/No_Burn_in_040/TEST_3"
 )
