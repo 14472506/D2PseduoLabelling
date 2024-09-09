@@ -13,7 +13,7 @@ class EvalHook(HookBase):
     It is executed every ``eval_period`` iterations and after the last iteration.
     """
 
-    def __init__(self, cfg, eval_period, eval_function, checkpointer, eval_after_train=True):
+    def __init__(self, cfg, eval_period, eval_function, checkpointer, teacher_checkpointer, eval_after_train=True):
         """
         Args:
             eval_period (int): the period to run `eval_function`. Set to 0 to
@@ -33,8 +33,11 @@ class EvalHook(HookBase):
         self._func = eval_function
         self._eval_after_train = eval_after_train
         self._checkpointer = checkpointer
+        self._teacher_checkpointer = teacher_checkpointer
         self.stage = "pre_training"
         self.best_map = 0.0
+        self.dist_targ_map = 0.0
+        self.distillation_burn_in = False
 
     def _update_stage(self):
         current_iter = self.trainer.iter
@@ -49,17 +52,31 @@ class EvalHook(HookBase):
             self.stage = "distillation"
 
     def _do_eval(self):
+        """ detials """
+        print(self.stage)
         prior_state = self.stage
         self._update_stage()  # Ensure the stage is updated before evaluation
         new_state = self.stage
+        
         if prior_state != new_state:
-            self.best_map = 0
+            if new_state == "distillation":
+                print("SETTING DIST TARG")
+                self.best_map = self.dist_targ_map
+            else:
+                self.best_map = 0
+
         results = self._func()
         current_map = results["segm"]["AP"]
         if current_map > self.best_map:
+            if self.stage == "distillation":
+                self.distillation_burn_in = True
+                print("NOW DISTILLING")
             self.best_map = current_map
             self._checkpointer.save(f"{self.stage}_best_model")
             print(f"Best model saved at mAP: {self.best_map} for stage: {self.stage}")
+        self._checkpointer.save("last_model")
+        if self.stage == "distillation":
+            self._teacher_checkpointer.save("last_teacher")
 
         comm.synchronize()
 

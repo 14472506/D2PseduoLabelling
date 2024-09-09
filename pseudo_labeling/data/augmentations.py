@@ -20,48 +20,8 @@ class GaussianBlur:
         x = x.filter(ImageFilter.GaussianBlur(radius=sigma))
         return x
 
-
 def build_strong_augmentation(is_train):
-    """
-    Create a list of :class:`Augmentation` from config.
-    Now it includes resizing and flipping.
-
-    Returns:
-        list[Augmentation]
-    """
-
-    logger = logging.getLogger(__name__)
-    augmentation = []
-    if is_train:
-        # This is similar to SimCLR https://arxiv.org/abs/2002.05709
-        augmentation.append(transforms.RandomGrayscale(p=0.2))
-        augmentation.append(transforms.RandomApply([GaussianBlur([0.1, 2.0])], p=0.5))
-
-        #randcrop_transform = transforms.Compose(
-        #    [
-        #        transforms.RandomResizedCrop(size=(224, 224), scale=(0.8, 1.0)),
-        #        transforms.RandomHorizontalFlip(p=0.5),
-        #        transforms.ToTensor(),
-        #        transforms.ToPILImage(),
-        #    ]
-        #)
-        #augmentation.append(randcrop_transform)
-
-        transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1)
-        transforms.RandomInvert(p=0.1)
-
-        logger.info("Augmentations used in training: " + str(augmentation))
-    return transforms.Compose(augmentation)
-
-
-"""
-def build_strong_augmentation(is_train):
-    Create a list of :class:`Augmentation` from config.
-    Now it includes resizing and flipping.
-
-    Returns:
-        list[Augmentation]
-
+    """ Details """
     logger = logging.getLogger(__name__)
     augmentation = []
     if is_train:
@@ -72,48 +32,22 @@ def build_strong_augmentation(is_train):
         augmentation.append(transforms.RandomGrayscale(p=0.2))
         augmentation.append(transforms.RandomApply([GaussianBlur([0.1, 2.0])], p=0.5))
 
-        randcrop_transform = transforms.Compose(
-            [
-                transforms.ToTensor(),
-                transforms.RandomErasing(
-                    p=0.7, scale=(0.05, 0.2), ratio=(0.3, 3.3), value="random"
-                ),
-                transforms.RandomErasing(
-                    p=0.5, scale=(0.02, 0.2), ratio=(0.1, 6), value="random"
-                ),
-                transforms.RandomErasing(
-                    p=0.3, scale=(0.02, 0.2), ratio=(0.05, 8), value="random"
-                ),
-                transforms.ToPILImage(),
-            ]
-        )
-        augmentation.append(randcrop_transform)
+        # randcrop_transform = transforms.Compose(
+        #     [
+        #         transforms.ToTensor(),
+        #         transforms.RandomErasing(
+        #             p=0.7, scale=(0.05, 0.2), ratio=(0.3, 3.3), value="random"
+        #         ),
+        #         transforms.RandomErasing(
+        #             p=0.5, scale=(0.02, 0.2), ratio=(0.1, 6), value="random"
+        #         ),
+        #         transforms.RandomErasing(
+        #             p=0.3, scale=(0.02, 0.2), ratio=(0.05, 8), value="random"
+        #         ),
+        #         transforms.ToPILImage(),
+        #     ]
+        # )
+        # augmentation.append(randcrop_transform)
 
         logger.info("Augmentations used in training: " + str(augmentation))
     return transforms.Compose(augmentation)
-"""
-"""
-def build_strong_augmentation(is_train):
-    logger = logging.getLogger(__name__)
-    augmentation = []
-    if is_train:
-        augmentation.extend([
-
-
-
-            transforms.RandomPerspective(distortion_scale=0.5, p=0.5),
-            transforms.RandomErasing(p=0.5, scale=(0.02, 0.33), ratio=(0.3, 3.3)),
-            transforms.RandomVerticalFlip(p=0.5),
-            transforms.ToTensor()  # Ensure the image is converted to a tensor at the end
-        ])
-
-        combined_transform = transforms.Compose([
-            transforms.RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(0.9, 1.1), shear=10),
-            transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1),
-        ])
-        augmentation.append(transforms.RandomApply([combined_transform], p=0.5))
-
-        logger.info("Augmentations used in training: " + str(augmentation))
-
-    return transforms.Compose(augmentation)
-"""

@@ -2,7 +2,7 @@
 ###############################################################################
 # SET TRAIN OR TEST MODE
 ###############################################################################
-MODE="test"  # Set to "train" or "test"
+MODE="train"  # Set to "train" or "test"
 
 ###############################################################################
 # CONFIGURE TRAIN AND TEST PARAMS 
@@ -11,7 +11,7 @@ MODE="test"  # Set to "train" or "test"
 CONFIG_FILE="configs/pseudo_labeling/config_files/ps_m2f.yaml"
 # All training params
 USE_GPU=0
-ITERS=11112
+ITERS=22225
 TRAIN_PERC=100
 IMS_PER_BATCH=8
 EVAL_PERIOD=225
@@ -20,40 +20,40 @@ NUM_CLASSES=1
 # Pseudo labeling conditional setup
 PRE_TRAIN=false
 PRE_TRAIN_ITERS=0
-BURN_IN=true
-BURN_IN_ITERS=11112
+BURN_IN=false
+BURN_IN_ITERS=0
 
 # Pseudo labeling params
-METRIC_THRESHOLD=0.65
-CLASS_THRESHOLD=0.5
+METRIC_THRESHOLD=5.0
+CLASS_THRESHOLD=0.7
 EMA_UPDATE=20
-EMA_KEEP_RATE=0.997
+EMA_KEEP_RATE=0.9996
 METRIC_USE="static"
 METRIC_OFFSET=0.05
  
 
 # Define lists of weights and output directories
 TRAIN_WEIGHTS=(
-    "outputs/m2f_test/baseline/pre_training_best_model.pth"
+    "outputs/m2f/baseline/02/pre_training_best_model.pth"
     #"outputs/New_DS_Baseline/TEST_2/best_model.pth"
     #"outputs/New_DS_Baseline/TEST_3/best_model.pth"
 )
 
 # burn in student weights
-BURN_IN_WEIGHTS="downloads/mask2form_r50_coco/model_final_3c8ec9.pkl"
+BURN_IN_WEIGHTS="outputs/m2f/guided_dist/burn_in/02/burn_in_best_model.pth"
 
 TRAIN_DATASET="('jersey_train',)"
 VAL_DATASET="('jersey_val',)"
 
 TEST_WEIGHTS=(
-    "outputs/m2f_test/distillation_sbatch/distillation_best_model.pth"
+    ""
     #"outputs/No_Burn_in_040/TEST_2/best_model.pth"
     #"outputs/No_Burn_in_040/TEST_3/best_model.pth"
 )
 TEST_DATASET="('jersey_test',)"
 
 OUTPUT_DIRS=(
-    "outputs/m2f_test/distillation_sbatch"
+    "outputs/m2f/guided_dist/distillation/02"
     #"outputs/No_Burn_in_040/TEST_2"
     #"outputs/No_Burn_in_040/TEST_3"
 )
@@ -107,7 +107,7 @@ for i in "${!WEIGHTS[@]}"; do
     if [ "$MODE" = "train" ]; then
         echo "Training with weight: $WEIGHT, output directory: $OUTPUT_DIR"
         if [ -z "$WEIGHT" ]; then
-            python m2f_pseudo_labeling_train_net.py --use_gpu $USE_GPU --config $CONFIG_FILE  \
+            python guided_dist_pseudo_labeling_train_net.py --use_gpu $USE_GPU --config $CONFIG_FILE  \
                 OUTPUT_DIR $OUTPUT_DIR \
                 MODEL.WEIGHTS $WEIGHT \
                 SOLVER.MAX_ITER $ITERS \
@@ -129,7 +129,7 @@ for i in "${!WEIGHTS[@]}"; do
                 TEST.EVAL_PERIOD $EVAL_PERIOD \
                 MODEL.ROI_HEADS.NUM_CLASSES $NUM_CLASSES
         else
-            python m2f_pseudo_labeling_train_net.py --use_gpu $USE_GPU --config $CONFIG_FILE  \
+            python guided_dist_pseudo_labeling_train_net.py --use_gpu $USE_GPU --config $CONFIG_FILE  \
                 OUTPUT_DIR $OUTPUT_DIR \
                 MODEL.WEIGHTS $WEIGHT \
                 SOLVER.MAX_ITER $ITERS \
@@ -153,7 +153,7 @@ for i in "${!WEIGHTS[@]}"; do
         fi
     elif [ "$MODE" = "test" ]; then
         echo "Testing with weight: $WEIGHT, output directory: $OUTPUT_DIR"
-        python m2f_pseudo_labeling_train_net.py --use_gpu $USE_GPU --config $CONFIG_FILE  \
+        python guided_dist_pseudo_labeling_train_net.py --use_gpu $USE_GPU --config $CONFIG_FILE  \
             --eval \
             OUTPUT_DIR $OUTPUT_DIR \
             MODEL.WEIGHTS $WEIGHT \
@@ -180,7 +180,3 @@ for i in "${!WEIGHTS[@]}"; do
         exit 1
     fi
 done
-
-
-
-

@@ -4,15 +4,14 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=16G
 #SBATCH --time=24:00:00
-#SBATCH --output=sbatch_logs/m2f_dist_025_01_continued_03_%j.log
+#SBATCH --output=sbatch_logs/gd_distillation_3_%j.log
 #SBATCH --no-requeue
 
 # Load required modules (if any)
 # module load docker
 
 # Load docker container
-docker build -t brhurst:latest .
-#docker load -i setup/brhurst.tar
+docker load -i setup/brhurst.tar
 
 # Run docker container
 docker run --rm --device /dev/nvidia0:/dev/nvidia0 --device /dev/nvidiactl:/dev/nvidiactl --device /dev/nvidia-uvm:/dev/nvidia-uvm -v $(pwd):/workspace brhurst:latest bash -c '
@@ -35,6 +34,9 @@ pip install -r mask2former/requirements.txt && \
 cd mask2former/modeling/pixel_decoder/ops && \
 sh make.sh && \
 cd ../../../../ && \
-pip uninstall numpy -y && \
+pip uninstall -y numpy && \
 pip install numpy==1.26.4 && \
-bash configs/pseudo_labeling/bash_scripts/m2f/m2f_pseudo_labeling_4.bash'
+bash configs/pseudo_labeling/bash_scripts/guid_dist/guid_dist_pseudo_labeling_3.bash'
+
+
+

@@ -15,6 +15,7 @@ import copy
 import statistics
 import matplotlib.pyplot as plt
 from torchvision.transforms import functional as F
+import torch.nn.functional as TF
 
 import torch
 
@@ -46,7 +47,7 @@ from pseudo_labeling.engine.hooks import EvalHook
 from pseudo_labeling.solver.optimizers import build_optimizer
 from pseudo_labeling.solver.losses import calculate_affinity_mask
 
-#from mask2former.data.dataset_mappers.coco_instance_new_baseline_dataset_mapper import COCOInstanceNewBaselineDatasetMapper
+from mask2former.data.dataset_mappers.coco_instance_new_baseline_dataset_mapper import COCOInstanceNewBaselineDatasetMapper
 
 # classes 
 class PseudoTrainer(DefaultTrainer):
@@ -87,7 +88,7 @@ class PseudoTrainer(DefaultTrainer):
 
         # initialise trainer base
         TrainerBase.__init__(self)
-        self._trainer = (AMPTrainer if cfg.SOLVER.AMP.ENABLED else PseudoSimpleTrainer)(
+        self._trainer = (AMPPseudoTrainer if cfg.SOLVER.AMP.ENABLED else PseudoSimpleTrainer)(
             model, data_loader, optimizer
         )
 
@@ -97,6 +98,12 @@ class PseudoTrainer(DefaultTrainer):
         self.scheduler = self.build_lr_scheduler(cfg, optimizer)
         self.checkpointer = DetectionCheckpointer(
             model,
+            cfg.OUTPUT_DIR,
+            optimizer=optimizer,
+            scheduler=self.scheduler,
+        )
+        self.teacher_checkpointer = DetectionCheckpointer(
+            model_teacher,
             cfg.OUTPUT_DIR,
             optimizer=optimizer,
             scheduler=self.scheduler,
@@ -117,6 +124,7 @@ class PseudoTrainer(DefaultTrainer):
 
         # register hooks
         self.register_hooks(self.build_hooks())
+
 
     # =========================================================================
     # Build Model Method
@@ -209,7 +217,8 @@ class PseudoTrainer(DefaultTrainer):
         self.validation_evaluator = COCOEvaluator(dataset_name, output_dir=cfg.OUTPUT_DIR)
         def eval_function():
             return inference_on_dataset(self.model, self.val_loader, self.validation_evaluator)
-        ret.append(EvalHook(cfg, cfg.TEST.EVAL_PERIOD, eval_function, self.checkpointer))
+        self.eval_hook = EvalHook(cfg, cfg.TEST.EVAL_PERIOD, eval_function, self.checkpointer, self.teacher_checkpointer)
+        ret.append(self.eval_hook)
         
         # back to other 
         if comm.is_main_process():
@@ -285,17 +294,20 @@ class PseudoTrainer(DefaultTrainer):
                 if self.iter == self.cfg.PSEUDO_LABELING.PRE_TRAIN_ITERS + self.cfg.PSEUDO_LABELING.BURN_IN_ITERS:
                     # Load best student weights
                     DetectionCheckpointer(self.model).load(os.path.join(self.cfg.OUTPUT_DIR, "burn_in_best_model.pth"))
-                    self._update_teacher_model(keep_rate=0.00)
                 elif (self.iter - self.cfg.PSEUDO_LABELING.PRE_TRAIN_ITERS + self.cfg.PSEUDO_LABELING.BURN_IN_ITERS) % self.cfg.PSEUDO_LABELING.PSEUDO_UPDATE_FREQ == 0:
-                    self._update_teacher_model(keep_rate=self.cfg.PSEUDO_LABELING.EMA_KEEP_RATE)
+                    if self.eval_hook.distillation_burn_in:
+                        self._update_teacher_model(keep_rate=self.cfg.PSEUDO_LABELING.EMA_KEEP_RATE)
             # If there is no burn-in
             elif not self.burn_in:
-                # No student burn-in, so update teacher in first instance else carry out EMA weight transfer with given keep rate
+                # In first instance load student weights to teacher and initialize burn-in weights for student. Otherwise do nothing. Teacher is frozen.
                 if self.iter == self.cfg.PSEUDO_LABELING.PRE_TRAIN_ITERS:
-                    print("INIT DISTILATION NO BURN IN, TRANSFERING WEIGHTS TO TEACHER")
+                    print("INIT DISTILLATION, LOADING STUDENT WEIGHTS")
                     self._update_teacher_model(keep_rate=0.00)
+                    # Load student weights
+                    DetectionCheckpointer(self.model).load(self.cfg.PSEUDO_LABELING.BURN_IN_STUDENT_WEIGHTS)
                 elif (self.iter - self.cfg.PSEUDO_LABELING.PRE_TRAIN_ITERS) % self.cfg.PSEUDO_LABELING.PSEUDO_UPDATE_FREQ == 0:
-                    self._update_teacher_model(keep_rate=self.cfg.PSEUDO_LABELING.EMA_KEEP_RATE)
+                    if self.eval_hook.distillation_burn_in:
+                        self._update_teacher_model(keep_rate=self.cfg.PSEUDO_LABELING.EMA_KEEP_RATE)
 
             # Get pseudo-labeled data
             if self.cfg.INPUT.DATASET_MAPPER_NAME == "m2f":
@@ -315,10 +327,15 @@ class PseudoTrainer(DefaultTrainer):
             for key in record_dict.keys():
                 # Weighting here later
                 if key == "unlabeled":
-                    loss_dict[key] = 2*sum(record_dict[key].values())
+                    #for loss_key in record_dict[key].keys():
+                    #    if loss_key == "loss_mask":
+                    #        record_dict[key][loss_key] = mean_met_val* record_dict[key][loss_key]
+                    #loss_dict[key] = sum(record_dict[key].values())
+                    #print(loss_dict[key], mean_met_val)
+                    loss_dict[key] = sum(record_dict[key].values())
                 else:
                     loss_dict[key] = sum(record_dict[key].values())
-
+                
             losses = sum(loss_dict.values())
 
         if self.cfg.PSEUDO_LABELING.METRIC_USE == "dynamic":
@@ -466,109 +483,95 @@ class PseudoTrainer(DefaultTrainer):
 
     def m2f_pseudo_label(self):
         """
-        Details
+        Generate pseudo labels for the unlabeled data using the teacher model.
         """
         got_pseudo_label = False
         while not got_pseudo_label:
             # Get predictions from unlabeled data
             unlabeled_data = next(self._trainer._unlabeled_data_loader_iter)
-    
+
             # Assuming the batch size is greater than 1
             student_images = [data[1]["strong_image"] for data in unlabeled_data]
             unlabeled_data = [data[0] for data in unlabeled_data]
-    
+
             batch_preds = self.model_teacher(unlabeled_data)
-    
+
             metric_values = []
             # Process predictions for each image in the batch
             for i, preds in enumerate(batch_preds):
                 preds = preds["instances"].to("cpu")
-    
-                pred_scores = preds.scores.detach().numpy()
-                pred_masks = preds.pred_masks.detach().numpy()
-                pred_boxes = preds.pred_boxes.tensor.detach().numpy()
-                pred_classes = preds.pred_classes.detach().numpy()
-    
+
+                pred_scores = preds.scores
+                pred_masks = preds.pred_masks
+                pred_boxes = preds.pred_boxes.tensor
+                pred_classes = preds.pred_classes
+
                 # Filter masks by prediction score
-                cf_pred_scores = []
-                cf_pred_masks = []
-                cf_pred_boxes = []
-                cf_pred_classes = []
-    
-                for j in range(len(pred_scores)):
-                    if pred_scores[j] < self.cfg.PSEUDO_LABELING.CLASS_CONFIDENCE_THRESHOLD:
-                        continue
-                    cf_pred_scores.append(pred_scores[j])
-                    cf_pred_masks.append(pred_masks[j])
-                    cf_pred_boxes.append(pred_boxes[j])
-                    cf_pred_classes.append(pred_classes[j])
-    
+                mask_filter = pred_scores >= self.cfg.PSEUDO_LABELING.CLASS_CONFIDENCE_THRESHOLD
+                filtered_scores = pred_scores[mask_filter]
+                filtered_masks = pred_masks[mask_filter]
+                filtered_boxes = pred_boxes[mask_filter]
+                filtered_classes = pred_classes[mask_filter]
+
                 # Filter masks by metric
-                mf_pred_scores = []
-                mf_pred_binary_masks = []
-                mf_pred_boxes = []
-                mf_pred_classes = []
+                valid_indices = []
                 mf_vol_sym = []
-    
-                for j in range(len(cf_pred_scores)):
-                    conf_score = cf_pred_scores[j]
-                    mask = cf_pred_masks[j]
-    
-                    # Check mask
-                    binary_mask = np.where(mask >= 0.5, 1, 0)
-                    area = np.count_nonzero(binary_mask)
-    
+
+                for j in range(filtered_scores.size(0)):
+                    mask = filtered_masks[j]
+
+                    # Check mask area
+                    binary_mask = (mask >= 0.5).float()
+                    area = binary_mask.sum().item()
+
                     if area < 50:
                         continue
-    
-                    # Get volumetric symmetry metric
+
+                    # Calculate volumetric symmetry metric
                     higher_volume = mask[mask >= 0.5] - 0.5
-                    lower_volume = np.minimum(mask, 0.5)
-                    vol_sym = conf_score * (higher_volume.sum() / lower_volume.sum()) ** 2
-    
+                    lower_volume = torch.clamp(mask, max=0.5)
+                    vol_sym = filtered_scores[j] * (higher_volume.sum() / lower_volume.sum()) ** 2
+
                     if vol_sym < self.metric_thresh:
                         continue
-    
-                    mf_pred_scores.append(cf_pred_scores[j])
-                    mf_pred_binary_masks.append(binary_mask)
-                    mf_pred_boxes.append(cf_pred_boxes[j])
-                    mf_pred_classes.append(cf_pred_classes[j])
-                    mf_vol_sym.append(vol_sym)
-    
-                if len(mf_pred_scores) == 0:
+
+                    valid_indices.append(j)
+                    mf_vol_sym.append(vol_sym.item())
+
+                if len(valid_indices) == 0:
                     continue
-    
+
                 # Data Post Processing
-                stacked_binary_masks = np.stack(mf_pred_binary_masks, axis=0)
-                binary_mask_tensor = torch.from_numpy(stacked_binary_masks).float()
-    
+                valid_indices = torch.tensor(valid_indices, dtype=torch.long)
+                selected_masks = filtered_masks[valid_indices]
+                selected_boxes = filtered_boxes[valid_indices]
+                selected_classes = filtered_classes[valid_indices]
+
                 # Resize masks to fit the image size
                 image_shape = (unlabeled_data[i]["height"], unlabeled_data[i]["width"])
-                resized_masks = F.resize(binary_mask_tensor, image_shape, interpolation=F.InterpolationMode.NEAREST)
-    
+                resized_masks = TF.interpolate(selected_masks.unsqueeze(1).float(), size=image_shape, mode='nearest').squeeze(1)
+
                 # Create BitMasks from the resized masks tensor
                 bitmask_masks = BitMasks(resized_masks)
-    
+
                 # Create Instances object
-                mf_pred_boxes = np.array(mf_pred_boxes)
-                boxes = Boxes(torch.tensor(mf_pred_boxes).float())
                 instances = Instances(image_shape)
-                instances.gt_boxes = boxes
+                instances.gt_boxes = Boxes(selected_boxes)
                 instances.gt_masks = bitmask_masks
-                instances.gt_classes = torch.tensor(mf_pred_classes)
+                instances.gt_classes = selected_classes
                 instances.gt_metric_score = torch.tensor(mf_vol_sym)
-    
+
                 # Update unlabeled data with pseudo labels
                 unlabeled_data[i]["image"] = student_images[i]
                 unlabeled_data[i]["instances"] = instances
                 metric_values.extend(mf_vol_sym)
-    
+
                 got_pseudo_label = True
-    
+
         self.metric_mean_count += 1
         self.metric_mean_acc += statistics.mean(metric_values)
         self.metric_mean_val = self.metric_mean_acc / self.metric_mean_count
-    
+
         # Return the batch of unlabeled data with pseudo labels
         return unlabeled_data
 
@@ -607,7 +610,7 @@ class PseudoTrainer(DefaultTrainer):
         return all_polygons
     
     @torch.no_grad()
-    def _update_teacher_model(self, keep_rate=0.996):
+    def _update_teacher_model(self, keep_rate=0.9996):
         """
         Details
         """
@@ -738,3 +741,245 @@ def visualize_masks(images, binary_masks, affinity_masks, titles=None, save_path
     plt.tight_layout()
     plt.savefig(save_path)
     print(f"Visualization saved to {save_path}")
+
+class GuidedDistPseudoLabelling(PseudoTrainer):
+    """
+    Detials
+    """
+    def m2f_pseudo_label(self):
+        """
+        Details
+        """
+        got_pseudo_label = False
+        while not got_pseudo_label:
+            # Get predictions from unlabeled data
+            unlabeled_data = next(self._trainer._unlabeled_data_loader_iter)
+    
+            # Assuming the batch size is greater than 1
+            student_images = [data[1]["strong_image"] for data in unlabeled_data]
+            unlabeled_data = [data[0] for data in unlabeled_data]
+    
+            batch_preds = self.model_teacher(unlabeled_data)
+    
+            metric_values = []
+            # Process predictions for each image in the batch
+            for i, preds in enumerate(batch_preds):
+                preds = preds["instances"].to("cpu")
+    
+                pred_scores = preds.scores.detach().numpy()
+                pred_masks = preds.pred_masks.detach().numpy()
+                pred_boxes = preds.pred_boxes.tensor.detach().numpy()
+                pred_classes = preds.pred_classes.detach().numpy()
+    
+                # Filter masks by prediction score
+                cf_pred_scores = []
+                cf_pred_masks = []
+                cf_pred_boxes = []
+                cf_pred_classes = []
+    
+                for j in range(len(pred_scores)):
+                    if pred_scores[j] < self.cfg.PSEUDO_LABELING.CLASS_CONFIDENCE_THRESHOLD:
+                        continue
+                    cf_pred_scores.append(pred_scores[j])
+                    cf_pred_masks.append(pred_masks[j])
+                    cf_pred_boxes.append(pred_boxes[j])
+                    cf_pred_classes.append(pred_classes[j])
+    
+                # Filter masks by metric
+                mf_pred_scores = []
+                mf_pred_binary_masks = []
+                mf_pred_boxes = []
+                mf_pred_classes = []
+                mf_vol_sym = []
+
+                for j in range(len(cf_pred_scores)):
+
+                    conf_score = cf_pred_scores[j]
+                    mask = cf_pred_masks[j]
+    
+                    # Check mask
+                    binary_mask = np.where(mask >= 0.5, 1, 0)
+                    area = np.count_nonzero(binary_mask)
+    
+                    #if area < 50:
+                    #    continue
+    
+                    # Get volumetric symmetry metric
+                    summed_logits = np.sum(mask)
+                    if summed_logits < self.metric_thresh:
+                        continue
+    
+                    mf_pred_scores.append(cf_pred_scores[j])
+                    mf_pred_binary_masks.append(binary_mask)
+                    mf_pred_boxes.append(cf_pred_boxes[j])
+                    mf_pred_classes.append(cf_pred_classes[j])
+                    mf_vol_sym.append(summed_logits)
+    
+                if len(mf_pred_scores) == 0:
+                    continue
+    
+                # Data Post Processing
+                stacked_binary_masks = np.stack(mf_pred_binary_masks, axis=0)
+                binary_mask_tensor = torch.from_numpy(stacked_binary_masks).float()
+    
+                # Resize masks to fit the image size
+                image_shape = (unlabeled_data[i]["height"], unlabeled_data[i]["width"])
+                resized_masks = F.resize(binary_mask_tensor, image_shape, interpolation=F.InterpolationMode.NEAREST)
+    
+                # Create BitMasks from the resized masks tensor
+                bitmask_masks = BitMasks(resized_masks)
+    
+                # Create Instances object
+                mf_pred_boxes = np.array(mf_pred_boxes)
+                boxes = Boxes(torch.tensor(mf_pred_boxes).float())
+                instances = Instances(image_shape)
+                instances.gt_boxes = boxes
+                instances.gt_masks = bitmask_masks
+                instances.gt_classes = torch.tensor(mf_pred_classes)
+                instances.gt_metric_score = torch.tensor(mf_vol_sym)
+    
+                # Update unlabeled data with pseudo labels
+                unlabeled_data[i]["image"] = student_images[i]
+                unlabeled_data[i]["instances"] = instances
+                metric_values.extend(mf_vol_sym)
+    
+                got_pseudo_label = True
+    
+        self.metric_mean_count += 1
+        self.metric_mean_acc += statistics.mean(metric_values)
+        self.metric_mean_val = self.metric_mean_acc / self.metric_mean_count
+    
+        # Return the batch of unlabeled data with pseudo labels
+        return unlabeled_data
+
+class AMPPseudoTrainer(PseudoSimpleTrainer):
+    """
+    Like :class:`SimpleTrainer`, but uses PyTorch's native automatic mixed precision
+    in the training loop.
+    """
+
+    def __init__(
+        self,
+        model,
+        data_loader,
+        optimizer,
+        precision: torch.dtype = torch.float16,
+        log_grad_scaler: bool = False,
+    ):
+        """
+        Args:
+            model, data_loader, optimizer, gather_metric_period, zero_grad_before_forward,
+                async_write_metrics: same as in :class:`SimpleTrainer`.
+            grad_scaler: torch GradScaler to automatically scale gradients.
+            precision: torch.dtype as the target precision to cast to in computations
+        """
+        #unsupported = "AMPTrainer does not support single-process multi-device training!"
+        #if isinstance(model, DistributedDataParallel):
+        #    assert not (model.device_ids and len(model.device_ids) > 1), unsupported
+        #assert not isinstance(model, DataParallel), unsupported
+
+        super().__init__(model, data_loader, optimizer)
+
+
+        from torch.cuda.amp import GradScaler
+        grad_scaler = GradScaler()
+        self.grad_scaler = grad_scaler
+        
+        self.precision = precision
+        self.log_grad_scaler = log_grad_scaler
+
+    def run_step(self):
+        """
+        Implement the AMP training logic.
+        """
+        assert self.model.training, "[AMPTrainer] model was changed to eval mode!"
+        assert torch.cuda.is_available(), "[AMPTrainer] CUDA is required for AMP training!"
+        from torch.cuda.amp import autocast
+
+        # Setup run step: get current iter and start timer
+        self._trainer.iter = self.iter
+        start = time.perf_counter()
+        
+        # Always collect labeled data
+        labeled_data = next(self._trainer._labeled_data_loader_iter)
+        data_time = time.perf_counter() - start        
+        
+        # If in pre-train iteration stage only carry out supervised forward pass
+        if self.pre_training and self.iter < self.cfg.PSEUDO_LABELING.PRE_TRAIN_ITERS:
+            loss_dict = self.model(labeled_data)
+            losses = sum(loss_dict.values())
+        # Else do pseudo labeling
+        else:
+            # If burn-in and in burn-in range
+            if self.burn_in and self.iter < self.cfg.PSEUDO_LABELING.PRE_TRAIN_ITERS + self.cfg.PSEUDO_LABELING.BURN_IN_ITERS:
+                # In first instance load student weights to teacher and initialize burn-in weights for student. Otherwise do nothing. Teacher is frozen.
+                if self.iter == self.cfg.PSEUDO_LABELING.PRE_TRAIN_ITERS:
+                    print("INIT BURN IN STAGE, LOADING STUDENT WEIGHTS")
+                    self._update_teacher_model(keep_rate=0.00)
+                    # Load student weights
+                    DetectionCheckpointer(self.model).load(self.cfg.PSEUDO_LABELING.BURN_IN_STUDENT_WEIGHTS)
+            # If in distillation range with burn-in present
+            elif self.burn_in and self.iter >= self.cfg.PSEUDO_LABELING.PRE_TRAIN_ITERS + self.cfg.PSEUDO_LABELING.BURN_IN_ITERS:
+                # Distillation after burn-in, so load best student. Teacher is already in place, in the first instance, afterward carry out distillation with given EMA keep rate.
+                if self.iter == self.cfg.PSEUDO_LABELING.PRE_TRAIN_ITERS + self.cfg.PSEUDO_LABELING.BURN_IN_ITERS:
+                    # Load best student weights
+                    DetectionCheckpointer(self.model).load(os.path.join(self.cfg.OUTPUT_DIR, "burn_in_best_model.pth"))
+                elif (self.iter - self.cfg.PSEUDO_LABELING.PRE_TRAIN_ITERS + self.cfg.PSEUDO_LABELING.BURN_IN_ITERS) % self.cfg.PSEUDO_LABELING.PSEUDO_UPDATE_FREQ == 0:
+                    if self.eval_hook.distillation_burn_in:
+                        self._update_teacher_model(keep_rate=self.cfg.PSEUDO_LABELING.EMA_KEEP_RATE)
+            # If there is no burn-in
+            elif not self.burn_in:
+                # In first instance load student weights to teacher and initialize burn-in weights for student. Otherwise do nothing. Teacher is frozen.
+                if self.iter == self.cfg.PSEUDO_LABELING.PRE_TRAIN_ITERS:
+                    print("INIT DISTILLATION, LOADING STUDENT WEIGHTS")
+                    self._update_teacher_model(keep_rate=0.00)
+                    # Load student weights
+                    DetectionCheckpointer(self.model).load(self.cfg.PSEUDO_LABELING.BURN_IN_STUDENT_WEIGHTS)
+                elif (self.iter - self.cfg.PSEUDO_LABELING.PRE_TRAIN_ITERS) % self.cfg.PSEUDO_LABELING.PSEUDO_UPDATE_FREQ == 0:
+                    if self.eval_hook.distillation_burn_in:
+                        self._update_teacher_model(keep_rate=self.cfg.PSEUDO_LABELING.EMA_KEEP_RATE)
+
+            # Get pseudo-labeled data
+            if self.cfg.INPUT.DATASET_MAPPER_NAME == "m2f":
+                pseudo_labeled_data = self.m2f_pseudo_label()
+            else:
+                pseudo_labeled_data = self.mrcnn_pseudo_label()
+
+            # Forward pass on labeled and unlabeled data
+            record_dict = {}
+            with autocast(dtype=self.precision):
+                labeled_loss_dict = self.model(labeled_data)
+                unlabeled_loss_dict = self.model(pseudo_labeled_data)
+                record_dict["labeled"] = labeled_loss_dict
+                record_dict["unlabeled"] = unlabeled_loss_dict
+                # Process losses
+                loss_dict = {}
+                for key in record_dict.keys():
+                    # Weighting here later
+                    if key == "unlabeled":
+                        #for loss_key in record_dict[key].keys():
+                        #    if loss_key == "loss_mask":
+                        #        record_dict[key][loss_key] = mean_met_val* record_dict[key][loss_key]
+                        #loss_dict[key] = sum(record_dict[key].values())
+                        #print(loss_dict[key], mean_met_val)
+                        loss_dict[key] = sum(record_dict[key].values())
+                    else:
+                        loss_dict[key] = sum(record_dict[key].values())
+
+                losses = sum(loss_dict.values())
+       
+        if self.cfg.PSEUDO_LABELING.METRIC_USE == "dynamic":
+            if self.iter % self.cfg.TEST.EVAL_PERIOD == 0:
+                if self.iter != 0:
+                    self.metric_thresh = self.metric_mean_val - self.cfg.PSEUDO_LABELING.METRIC_OFFSET
+                    print("### NEW_THRESH ######################################")
+                    print(self.metric_thresh)
+                    self.metric_mean_count = 0
+                    self.metric_mean_acc = 0
+
+        self.optimizer.zero_grad()
+        self.grad_scaler.scale(losses).backward()
+
+        self.grad_scaler.step(self.optimizer)
+        self.grad_scaler.update()
+

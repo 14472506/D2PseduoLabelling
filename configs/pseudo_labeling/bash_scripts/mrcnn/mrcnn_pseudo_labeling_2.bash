@@ -2,16 +2,16 @@
 ###############################################################################
 # SET TRAIN OR TEST MODE
 ###############################################################################
-MODE="test"  # Set to "train" or "test"
+MODE="train"  # Set to "train" or "test"
 
 ###############################################################################
 # CONFIGURE TRAIN AND TEST PARAMS 
 ###############################################################################
 # Define default values for the parameters
-CONFIG_FILE="configs/pseudo_labeling/config_files/ps_m2f.yaml"
+CONFIG_FILE="configs/pseudo_labeling/config_files/ps_mrcnn.yaml"
 # All training params
 USE_GPU=0
-ITERS=11112
+ITERS=22225
 TRAIN_PERC=100
 IMS_PER_BATCH=8
 EVAL_PERIOD=225
@@ -20,44 +20,43 @@ NUM_CLASSES=1
 # Pseudo labeling conditional setup
 PRE_TRAIN=false
 PRE_TRAIN_ITERS=0
-BURN_IN=false
-BURN_IN_ITERS=0
+BURN_IN=true
+BURN_IN_ITERS=22225
 
 # Pseudo labeling params
-METRIC_THRESHOLD=0.4
+METRIC_THRESHOLD=0.30
 CLASS_THRESHOLD=0.5
 EMA_UPDATE=20
-EMA_KEEP_RATE=0.997
+EMA_KEEP_RATE=0.5000
 METRIC_USE="static"
 METRIC_OFFSET=0.05
  
 
 # Define lists of weights and output directories
 TRAIN_WEIGHTS=(
-    "outputs/m2f_test/burn_in_sbatch/burn_in_best_model.pth"
-    #"outputs/New_DS_Baseline/TEST_2/best_model.pth"
-    #"outputs/New_DS_Baseline/TEST_3/best_model.pth"
+    "outputs/mrcnn_ps_exps/all_stages_1/pre_training_best_model.pth"
+    #"outputs/mrcnn_ps_exps/all_stages_2/pre_training_best_model.pth"
+    #"outputs/mrcnn_ps_exps/all_stages_3/pre_training_best_model.pth"
 )
 
 # burn in student weights
-BURN_IN_WEIGHTS="outputs/m2f_test/burn_in_sbatch/burn_in_best_model.pth"
+BURN_IN_WEIGHTS="detectron2://COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x/137849600/model_final_f10217.pkl"
 
 TRAIN_DATASET="('jersey_train',)"
 VAL_DATASET="('jersey_val',)"
 
 TEST_WEIGHTS=(
-    "outputs/m2f_test/burn_in_sbatch/burn_in_best_model.pth"
+    ""
     #"outputs/No_Burn_in_040/TEST_2/best_model.pth"
     #"outputs/No_Burn_in_040/TEST_3/best_model.pth"
 )
 TEST_DATASET="('jersey_test',)"
 
 OUTPUT_DIRS=(
-    "outputs/m2f_test/burn_in_sbatch"
-    #"outputs/No_Burn_in_040/TEST_2"
-    #"outputs/No_Burn_in_040/TEST_3"
+    "outputs/mrcnn_ps_exps/burn_in_030/01"
+    #"outputs/mrcnn_ps_exps/burn_in_030/02"
+    #"outputs/mrcnn_ps_exps/burn_in_030/03"
 )
-
 ###############################################################################
 # SET TRAIN OR TEST WEIGHT AND DATASET CONFIG
 ###############################################################################
@@ -107,7 +106,7 @@ for i in "${!WEIGHTS[@]}"; do
     if [ "$MODE" = "train" ]; then
         echo "Training with weight: $WEIGHT, output directory: $OUTPUT_DIR"
         if [ -z "$WEIGHT" ]; then
-            python m2f_pseudo_labeling_train_net.py --use_gpu $USE_GPU --config $CONFIG_FILE  \
+            python mrcnn_pseudo_labeling_train_net.py --use_gpu $USE_GPU --config $CONFIG_FILE  \
                 OUTPUT_DIR $OUTPUT_DIR \
                 MODEL.WEIGHTS $WEIGHT \
                 SOLVER.MAX_ITER $ITERS \
@@ -129,7 +128,7 @@ for i in "${!WEIGHTS[@]}"; do
                 TEST.EVAL_PERIOD $EVAL_PERIOD \
                 MODEL.ROI_HEADS.NUM_CLASSES $NUM_CLASSES
         else
-            python m2f_pseudo_labeling_train_net.py --use_gpu $USE_GPU --config $CONFIG_FILE  \
+            python mrcnn_pseudo_labeling_train_net.py --use_gpu $USE_GPU --config $CONFIG_FILE  \
                 OUTPUT_DIR $OUTPUT_DIR \
                 MODEL.WEIGHTS $WEIGHT \
                 SOLVER.MAX_ITER $ITERS \
@@ -153,7 +152,7 @@ for i in "${!WEIGHTS[@]}"; do
         fi
     elif [ "$MODE" = "test" ]; then
         echo "Testing with weight: $WEIGHT, output directory: $OUTPUT_DIR"
-        python m2f_pseudo_labeling_train_net.py --use_gpu $USE_GPU --config $CONFIG_FILE  \
+        python mrcnn_pseudo_labeling_train_net.py --use_gpu $USE_GPU --config $CONFIG_FILE  \
             --eval \
             OUTPUT_DIR $OUTPUT_DIR \
             MODEL.WEIGHTS $WEIGHT \
@@ -180,7 +179,3 @@ for i in "${!WEIGHTS[@]}"; do
         exit 1
     fi
 done
-
-
-
-

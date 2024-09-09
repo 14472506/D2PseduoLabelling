@@ -20,23 +20,23 @@ NUM_CLASSES=1
 # Pseudo labeling conditional setup
 PRE_TRAIN=false
 PRE_TRAIN_ITERS=0
-BURN_IN=false
-BURN_IN_ITERS=0
+BURN_IN=true
+BURN_IN_ITERS=22225
 
 # Pseudo labeling params
 METRIC_THRESHOLD=0.25
 CLASS_THRESHOLD=0.5
 EMA_UPDATE=20
-EMA_KEEP_RATE=0.9998
+EMA_KEEP_RATE=0.5000
 METRIC_USE="static"
 METRIC_OFFSET=0.05
  
 
 # Define lists of weights and output directories
 TRAIN_WEIGHTS=(
-    "outputs/ps_dev/added_weighting_025/burn_in_best_model.pth"
-    #"outputs/New_DS_Baseline/TEST_2/best_model.pth"
-    #"outputs/New_DS_Baseline/TEST_3/best_model.pth"
+    "outputs/mrcnn_ps_exps/all_stages_1/pre_training_best_model.pth"
+    #"outputs/mrcnn_ps_exps/all_stages_2/pre_training_best_model.pth"
+    #"outputs/mrcnn_ps_exps/all_stages_3/pre_training_best_model.pth"
 )
 
 # burn in student weights
@@ -53,9 +53,9 @@ TEST_WEIGHTS=(
 TEST_DATASET="('jersey_test',)"
 
 OUTPUT_DIRS=(
-    "outputs/ps_dev/added_weighting_025_9998"
-    #"outputs/No_Burn_in_040/TEST_2"
-    #"outputs/No_Burn_in_040/TEST_3"
+    "outputs/mrcnn_ps_exps/burn_in_025/01"
+    #"outputs/mrcnn_ps_exps/burn_in_025/02"
+    #"outputs/mrcnn_ps_exps/burn_in_025/03"
 )
 
 ###############################################################################

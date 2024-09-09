@@ -16,6 +16,7 @@ import numpy as np
 import torch
 import detectron2.data.detection_utils as utils
 from detectron2.data import transforms as T
+from detectron2.data.transforms import AugInput
 from detectron2.config import configurable
 
 from pseudo_labeling.data.augmentations import build_strong_augmentation
@@ -41,6 +42,7 @@ from detectron2.data import transforms as T
 from detectron2.config import configurable
 from pseudo_labeling.data.augmentations import build_strong_augmentation
 
+# class
 class UnlabeledDatasetMapper:
     """ 
     A dataset mapper for unlabeled data with strong augmentations.
@@ -76,28 +78,35 @@ class UnlabeledDatasetMapper:
         return ret
 
     def __call__(self, dataset_dict):
-        dataset_dict = copy.deepcopy(dataset_dict)  # it will be modified by code below
+        dataset_dict = copy.deepcopy(dataset_dict)
         student_dict = copy.deepcopy(dataset_dict)
 
+        # Load and check image
         image = utils.read_image(dataset_dict["file_name"], format=self.image_format)
         utils.check_image_size(dataset_dict, image)
 
-        # Apply augmentations
+        # Apply augmentations using AugInput and AugmentationList (requires NumPy array)
         aug_input = T.AugInput(image)
         transforms = self.augmentations(aug_input)
-        image = aug_input.image  # Apply augmentations
+        image = aug_input.image  # The image after applying augmentations
 
-        # Apply strong augmentation
+        # Apply strong augmentation - Keep in 0-255 range for PIL compatibility
         image_pil = Image.fromarray(image.astype("uint8"), "RGB")
-        strong_auged_image = np.array(self.strong_augmentation(image_pil))
+        strong_auged_image = self.strong_augmentation(image_pil)
 
-        dataset_dict["image"] = torch.as_tensor(np.ascontiguousarray(image.transpose(2, 0, 1)))
-        student_dict["strong_image"] = torch.as_tensor(np.ascontiguousarray(strong_auged_image.transpose(2, 0, 1)))
+        # Convert the strong augmented image back to numpy array
+        strong_auged_image = np.array(strong_auged_image)
+
+        # Convert both images to tensors
+        image_tensor = torch.as_tensor(np.ascontiguousarray(image.transpose(2, 0, 1))).float() 
+        strong_auged_image_tensor = torch.as_tensor(np.ascontiguousarray(strong_auged_image.transpose(2, 0, 1))).float() 
+
+        # Store the tensors in the dataset dictionaries
+        dataset_dict["image"] = image_tensor
+        student_dict["strong_image"] = strong_auged_image_tensor
 
         return dataset_dict, student_dict
 
-
-# class
 """
 class UnlabeledDatasetMapper:
  
