@@ -5,15 +5,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import torch.nn.functional as F
+import torch
 
 from detectron2.engine import DefaultPredictor
 from detectron2.config import get_cfg
 from detectron2.utils.visualizer import Visualizer
 
+#from pseudo_labeling.config import add_pseudo_config
+#from pseudo_labeling.modelling.my_rcnn import MyGeneralizedRCNN
+#from pseudo_labeling.modelling import mask_head 
+#from pseudo_labeling.modelling import custom_roi
+
+from pseudo_labeling.engine.trainer import PseudoTrainer
+from mask2former.config import add_maskformer2_config
 from pseudo_labeling.config import add_pseudo_config
-from pseudo_labeling.modelling.my_rcnn import MyGeneralizedRCNN
-from pseudo_labeling.modelling import mask_head 
-from pseudo_labeling.modelling import custom_roi
+from mask2former import MaskFormer
 
 # main
 def main(cfg_path, weight_path, source_dir, targ_img_dir):
@@ -37,7 +43,7 @@ def main(cfg_path, weight_path, source_dir, targ_img_dir):
         preds = output["instances"].to("cpu")
 
         pred_scores = preds.scores.detach().numpy()
-        pred_masks = preds.pred_masks.detach().numpy() / 255
+        pred_masks = preds.pred_masks.detach().numpy() 
 
         # Filter masks by prediction score
         cf_pred_scores = []
@@ -58,12 +64,12 @@ def main(cfg_path, weight_path, source_dir, targ_img_dir):
             conf_score = cf_pred_scores[j]
             mask = cf_pred_masks[j]
 
+            #mask = sigmoid(mask)
+            print(mask)
+
             # Check mask
             binary_mask = np.where(mask >= 0.5, 1, 0)
             area = np.count_nonzero(binary_mask)
-
-            if area < 50:
-                continue
 
             # Get volumetric symmetry metric
             good_volume = mask[mask >= 0.5]
@@ -88,18 +94,31 @@ def main(cfg_path, weight_path, source_dir, targ_img_dir):
     plt.savefig("050_burn_in.png")
     plt.close()
 
+#def sigmoid(x):
+#    return 1 / (1 + np.exp(-x))
+
+#def setup(cfg_path, weights_path):
+#    cfg = get_cfg()
+#    add_pseudo_config(cfg)
+#    cfg.merge_from_file(cfg_path)    
+#    cfg.MODEL.WEIGHTS = weights_path 
+#    return(cfg)
+
 def setup(cfg_path, weights_path):
+    """ Initialise config and ammend based on command line arguments """
     cfg = get_cfg()
+    # adding argments to base config to accomodate pseudo labeling
+    add_maskformer2_config(cfg)
     add_pseudo_config(cfg)
-    cfg.merge_from_file(cfg_path)    
-    cfg.MODEL.WEIGHTS = weights_path 
-    return(cfg)
+    cfg.merge_from_file(cfg_path)
+    cfg.MODEL.WEIGHTS = weights_path
+    return cfg
      
 # execute
 if __name__ == "__main__":
     main(
-        "configs/pseudo_labeling/config_files/ps_mrcnn.yaml",
-        "outputs/mrcnn_ps_exps/all_stages_1/burn_in_best_model.pth",
-        "datasets/jr_v5_unlabeled_data",
+        "configs/pseudo_labeling/config_files/ps_m2f_from_gd.yaml",
+        "outputs/m2f/guided_dist/distillation/dist/01_continued_03/distillation_best_model.pth",
+        "datasets/cityscapes/leftImg8bit/val/frankfurt",
         ""
     )

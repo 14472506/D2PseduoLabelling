@@ -32,12 +32,21 @@ GLOBAL:
 # =============================================================================
 INPUT:
   IMAGE_SIZE: 1024
-  MIN_SCALE: 0.1
-  MAX_SCALE: 2.0
+  #MIN_SCALE: 0.1
+  #MAX_SCALE: 2.0
   FORMAT: "RGB"
   DATASET_MAPPER_NAME: "m2f"
   MIN_SIZE_TRAIN_SAMPLING: choice
   RANDOM_FLIP: horizontal
+  MAX_SIZE_TRAIN: 4096
+  MAX_SIZE_TEST: 2048
+  CROP:
+    ENABLED: True
+    TYPE: "absolute"
+    SIZE: (512, 1024)
+    SINGLE_CATEGORY_MAX_AREA: 1.0
+  COLOR_AUG_SSD: True
+  SIZE_DIVISIBILITY: -1
 
 # =============================================================================
 # MODEL
@@ -131,7 +140,7 @@ SEED: -1
 # SOLVER
 # =============================================================================
 SOLVER:
-  OPTIMIZER: ADAM
+  OPTIMIZER: ADAMW
   AMP:
     ENABLED: True
   BASE_LR: 5.0e-05
@@ -139,9 +148,9 @@ SOLVER:
   BIAS_LR_FACTOR: 1.0
   CHECKPOINT_PERIOD: 50000
   CLIP_GRADIENTS:
-    CLIP_TYPE: value
-    CLIP_VALUE: 1.0
-    ENABLED: false
+    CLIP_TYPE: "full_model"
+    CLIP_VALUE: 0.01
+    ENABLED: true
     NORM_TYPE: 2.0
   GAMMA: 0.1
   IMS_PER_BATCH: 4
@@ -158,7 +167,7 @@ SOLVER:
   WARMUP_FACTOR: 0.001
   WARMUP_ITERS: 0                       # Default 1000 seems to hinder initial training?
   WARMUP_METHOD: linear
-  WEIGHT_DECAY: 0.0001
+  WEIGHT_DECAY: 0.05
   WEIGHT_DECAY_BIAS: null
   WEIGHT_DECAY_NORM: 0.0
 

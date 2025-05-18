@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Start the Docker container interactively
-docker run --rm --device /dev/nvidia0:/dev/nvidia0 --device /dev/nvidiactl:/dev/nvidiactl --device /dev/nvidia-uvm:/dev/nvidia-uvm -it -v $(pwd):/workspace brhurst:latest bash -c '
-# Activate conda environment and run the commands
+docker run -it --gpus all -v $(pwd):/workspace brhurst:latest bash -c '
+export PIP_ROOT_USER_ACTION=ignore && \
 source activate detectron2 && \
-yes | pip uninstall detectron2 && \
+# yes | pip uninstall detectron2 && \
 cd /workspace/detectron2 && \
 python -m pip install -e . && \
 cd /workspace && \
@@ -23,7 +23,6 @@ sh make.sh && \
 cd ../../../../ && \
 pip uninstall numpy -y && \
 pip install numpy==1.26.4 && \
-/bin/bash
-'
+/bin/bash'
 
 

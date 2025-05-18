@@ -2,7 +2,7 @@
 ###############################################################################
 # SET TRAIN OR TEST MODE
 ###############################################################################
-MODE="test"  # Set to "train" or "test"
+MODE="train"  # Set to "train" or "test"
 
 ###############################################################################
 # CONFIGURE TRAIN AND TEST PARAMS 
@@ -18,41 +18,40 @@ EVAL_PERIOD=225
 NUM_CLASSES=1
 
 # Pseudo labeling conditional setup
-PRE_TRAIN=true
-PRE_TRAIN_ITERS=22225
+PRE_TRAIN=false
+PRE_TRAIN_ITERS=0
 BURN_IN=false
 BURN_IN_ITERS=0
 
 # Pseudo labeling params
-METRIC_THRESHOLD=0.25
+METRIC_THRESHOLD=0.30
 CLASS_THRESHOLD=0.5
 EMA_UPDATE=20
 EMA_KEEP_RATE=0.9996
 METRIC_USE="static"
 METRIC_OFFSET=0.05
- 
 
 # Define lists of weights and output directories
 TRAIN_WEIGHTS=(
-    "downloads/mask2form_r50_coco/model_final_3c8ec9.pkl"
-    #"outputs/New_DS_Baseline/TEST_2/best_model.pth"
-    #"outputs/New_DS_Baseline/TEST_3/best_model.pth"
+    ""
+    #""
+    #""
 )
 
 # burn in student weights
-BURN_IN_WEIGHTS="outputs/m2f/burn_in_025/03_continued/burn_in_best_model.pth"
+BURN_IN_WEIGHTS=""
 
 TRAIN_DATASET="('jersey_train',)"
 VAL_DATASET="('jersey_val',)"
 
 TEST_WEIGHTS=(
-    "outputs/m2f/dist_035/03_continued_01/distillation_best_model.pth"
+    ""
 
 )
 TEST_DATASET="('jersey_test',)"
 
 OUTPUT_DIRS=(
-    "outputs/m2f/dist_035/03_continued_01"
+    ""
 )
 
 ###############################################################################

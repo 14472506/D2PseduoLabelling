@@ -18,23 +18,23 @@ EVAL_PERIOD=225
 NUM_CLASSES=1
 
 # Pseudo labeling conditional setup
-PRE_TRAIN=false
-PRE_TRAIN_ITERS=0
-BURN_IN=true
-BURN_IN_ITERS=22225
+PRE_TRAIN=True
+PRE_TRAIN_ITERS=22225
+BURN_IN=false
+BURN_IN_ITERS=0
 
 # Pseudo labeling params
-METRIC_THRESHOLD=0.25
+METRIC_THRESHOLD=0.40
 CLASS_THRESHOLD=0.5
 EMA_UPDATE=20
-EMA_KEEP_RATE=0.5000
+EMA_KEEP_RATE=0.999
 METRIC_USE="static"
 METRIC_OFFSET=0.05
- 
+LOSS_WEIGHTING=1.5
 
 # Define lists of weights and output directories
 TRAIN_WEIGHTS=(
-    "outputs/mrcnn_ps_exps/all_stages_1/pre_training_best_model.pth"
+    "detectron2://COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x/137849600/model_final_f10217.pkl"
     #"outputs/mrcnn_ps_exps/all_stages_2/pre_training_best_model.pth"
     #"outputs/mrcnn_ps_exps/all_stages_3/pre_training_best_model.pth"
 )
@@ -46,14 +46,14 @@ TRAIN_DATASET="('jersey_train',)"
 VAL_DATASET="('jersey_val',)"
 
 TEST_WEIGHTS=(
-    ""
+    "detectron2://COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x/137849600/model_final_f10217.pkl"
     #"outputs/No_Burn_in_040/TEST_2/best_model.pth"
     #"outputs/No_Burn_in_040/TEST_3/best_model.pth"
 )
 TEST_DATASET="('jersey_test',)"
 
 OUTPUT_DIRS=(
-    "outputs/mrcnn_ps_exps/burn_in_025/01"
+    "outputs/mrcnn_gen/BASELINE_CHECK"
     #"outputs/mrcnn_ps_exps/burn_in_025/02"
     #"outputs/mrcnn_ps_exps/burn_in_025/03"
 )

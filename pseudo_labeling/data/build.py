@@ -111,7 +111,7 @@ def build_pseudo_train_loader(
     unlabeled_sampler=None,
     total_batch_size,
     aspect_ratio_grouping=True,
-    num_workers=0,
+    num_workers=8,
     collate_fn=None,
     **kwargs
 ):

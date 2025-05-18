@@ -2,7 +2,7 @@
 ###############################################################################
 # SET TRAIN OR TEST MODE
 ###############################################################################
-MODE="test"  # Set to "train" or "test"
+MODE="train"  # Set to "train" or "test"
 
 ###############################################################################
 # CONFIGURE TRAIN AND TEST PARAMS 
@@ -11,20 +11,20 @@ MODE="test"  # Set to "train" or "test"
 CONFIG_FILE="configs/pseudo_labeling/config_files/ps_m2f.yaml"
 # All training params
 USE_GPU=0
-ITERS=10286
+ITERS=22225
 TRAIN_PERC=100
 IMS_PER_BATCH=8
 EVAL_PERIOD=225
 NUM_CLASSES=1
 
 # Pseudo labeling conditional setup
-PRE_TRAIN=true
-PRE_TRAIN_ITERS=10286
+PRE_TRAIN=false
+PRE_TRAIN_ITERS=0
 BURN_IN=false
 BURN_IN_ITERS=0
 
 # Pseudo labeling params
-METRIC_THRESHOLD=0.25
+METRIC_THRESHOLD=0.30
 CLASS_THRESHOLD=0.5
 EMA_UPDATE=20
 EMA_KEEP_RATE=0.9996
@@ -34,25 +34,25 @@ METRIC_OFFSET=0.05
 
 # Define lists of weights and output directories
 TRAIN_WEIGHTS=(
-    "outputs/m2f/baseline/02/last_model.pth"
-    #"outputs/New_DS_Baseline/TEST_2/best_model.pth"
-    #"outputs/New_DS_Baseline/TEST_3/best_model.pth"
+    ""
+    #""
+    #""
 )
 
 # burn in student weights
-BURN_IN_WEIGHTS="outputs/m2f/burn_in_025/02_continued_02/burn_in_best_model.pth"
+BURN_IN_WEIGHTS=""
 
 TRAIN_DATASET="('jersey_train',)"
 VAL_DATASET="('jersey_val',)"
 
 TEST_WEIGHTS=(
-    "outputs/m2f/dist_035/02/distillation_best_model.pth"
+    ""
 
 )
 TEST_DATASET="('jersey_test',)"
 
 OUTPUT_DIRS=(
-    "outputs/m2f/dist_035/02"
+    ""
 )
 
 ###############################################################################

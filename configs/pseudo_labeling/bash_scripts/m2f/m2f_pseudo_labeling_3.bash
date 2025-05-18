@@ -2,57 +2,58 @@
 ###############################################################################
 # SET TRAIN OR TEST MODE
 ###############################################################################
-MODE="test"  # Set to "train" or "test"
+MODE="train"  # Set to "train" or "test"
 
 ###############################################################################
 # CONFIGURE TRAIN AND TEST PARAMS 
 ###############################################################################
 # Define default values for the parameters
-CONFIG_FILE="configs/pseudo_labeling/config_files/ps_m2f.yaml"
+CONFIG_FILE="configs/pseudo_labeling/config_files/ps_m2f_from_gd.yaml"
 # All training params
 USE_GPU=0
-ITERS=22225
+ITERS=22241
 TRAIN_PERC=100
 IMS_PER_BATCH=8
-EVAL_PERIOD=225
-NUM_CLASSES=1
+EVAL_PERIOD=298
+NUM_CLASSES=8
 
 # Pseudo labeling conditional setup
 PRE_TRAIN=false
 PRE_TRAIN_ITERS=0
-BURN_IN=false
-BURN_IN_ITERS=0
+BURN_IN=true
+BURN_IN_ITERS=22241
 
 # Pseudo labeling params
-METRIC_THRESHOLD=0.30
+METRIC_THRESHOLD=0.25
 CLASS_THRESHOLD=0.5
 EMA_UPDATE=20
 EMA_KEEP_RATE=0.9996
 METRIC_USE="static"
 METRIC_OFFSET=0.05
+LOSS_WEIGHTING=1.5
  
 
 # Define lists of weights and output directories
 TRAIN_WEIGHTS=(
-    "outputs/m2f/baseline/03/pre_training_best_model.pth"
-    #"outputs/New_DS_Baseline/TEST_2/best_model.pth"
-    #"outputs/New_DS_Baseline/TEST_3/best_model.pth"
+    "outputs/m2f/cityscapes_test/IN_PT_30k_our_config/pre_training_best_model.pth"
+    #""
+    #""
 )
 
 # burn in student weights
-BURN_IN_WEIGHTS="outputs/m2f/burn_in_030/03_continued_02/burn_in_best_model.pth"
+BURN_IN_WEIGHTS="outputs/m2f/cityscapes_test/IN_PT_30k_our_config_dist_9996_025/01/last_model.pth"
 
-TRAIN_DATASET="('jersey_train',)"
-VAL_DATASET="('jersey_val',)"
+TRAIN_DATASET="('cityscapes_train',)"
+VAL_DATASET="('cityscapes_val',)"
 
 TEST_WEIGHTS=(
-    "outputs/m2f/dist_030/03/distillation_best_model.pth"
+    "something"
 
 )
-TEST_DATASET="('jersey_test',)"
+TEST_DATASET="('something',)"
 
 OUTPUT_DIRS=(
-    "outputs/m2f/dist_030/03"
+    "outputs/m2f/cityscapes_test/IN_PT_30k_our_config_dist_9996_025/01_continued_01"
 )
 
 ###############################################################################
@@ -123,8 +124,9 @@ for i in "${!WEIGHTS[@]}"; do
                 PSEUDO_LABELING.EMA_KEEP_RATE $EMA_KEEP_RATE \
                 PSEUDO_LABELING.METRIC_USE $METRIC_USE \
                 PSEUDO_LABELING.METRIC_OFFSET $METRIC_OFFSET \
+                PSEUDO_LABELING.LOSS_WEIGHTING $LOSS_WEIGHTING \
                 TEST.EVAL_PERIOD $EVAL_PERIOD \
-                MODEL.ROI_HEADS.NUM_CLASSES $NUM_CLASSES
+                MODEL.SEM_SEG_HEAD.NUM_CLASSES $NUM_CLASSES
         else
             python m2f_pseudo_labeling_train_net.py --use_gpu $USE_GPU --config $CONFIG_FILE  \
                 OUTPUT_DIR $OUTPUT_DIR \
@@ -145,8 +147,9 @@ for i in "${!WEIGHTS[@]}"; do
                 PSEUDO_LABELING.EMA_KEEP_RATE $EMA_KEEP_RATE \
                 PSEUDO_LABELING.METRIC_USE $METRIC_USE \
                 PSEUDO_LABELING.METRIC_OFFSET $METRIC_OFFSET \
+                PSEUDO_LABELING.LOSS_WEIGHTING $LOSS_WEIGHTING \
                 TEST.EVAL_PERIOD $EVAL_PERIOD \
-                MODEL.ROI_HEADS.NUM_CLASSES $NUM_CLASSES
+                MODEL.SEM_SEG_HEAD.NUM_CLASSES $NUM_CLASSES
         fi
     elif [ "$MODE" = "test" ]; then
         echo "Testing with weight: $WEIGHT, output directory: $OUTPUT_DIR"
@@ -170,8 +173,9 @@ for i in "${!WEIGHTS[@]}"; do
             PSEUDO_LABELING.EMA_KEEP_RATE $EMA_KEEP_RATE \
             PSEUDO_LABELING.METRIC_USE $METRIC_USE \
             PSEUDO_LABELING.METRIC_OFFSET $METRIC_OFFSET \
+            PSEUDO_LABELING.LOSS_WEIGHTING $LOSS_WEIGHTING \
             TEST.EVAL_PERIOD $EVAL_PERIOD \
-            MODEL.ROI_HEADS.NUM_CLASSES $NUM_CLASSES
+            MODEL.SEM_SEG_HEAD.NUM_CLASSES $NUM_CLASSES
     else
         echo "Unknown mode: $MODE. Use 'train' or 'test'. Exiting."
         exit 1

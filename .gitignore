@@ -2,6 +2,7 @@
 /outputs
 /results_store
 /inference_out
+/visualized_outputs/
 scratch_pad
 __pycache__/
 *.cython-38.pyc
@@ -11,5 +12,7 @@ __pycache__/
 *.run
 *.deb
 *.pub
+*.zip
+*.pdf
 /sbatch_logs
 /downloads

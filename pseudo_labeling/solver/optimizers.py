@@ -44,6 +44,10 @@ def build_optimizer(cfg, model):
         optimizer = torch.optim.Adam(
             params, cfg.SOLVER.BASE_LR
         )
+    elif optimizer_type == "ADAMW":
+        optimizer = torch.optim.AdamW(
+            params, cfg.SOLVER.BASE_LR, weight_decay=cfg.SOLVER.WEIGHT_DECAY
+        )
     else:
         raise NotImplementedError(f"no optimizer type {optimizer_type}")
 

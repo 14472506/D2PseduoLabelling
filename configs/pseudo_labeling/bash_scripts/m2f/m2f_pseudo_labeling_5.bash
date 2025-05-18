@@ -2,7 +2,7 @@
 ###############################################################################
 # SET TRAIN OR TEST MODE
 ###############################################################################
-MODE="test"  # Set to "train" or "test"
+MODE="train"  # Set to "train" or "test"
 
 ###############################################################################
 # CONFIGURE TRAIN AND TEST PARAMS 
@@ -24,35 +24,36 @@ BURN_IN=false
 BURN_IN_ITERS=0
 
 # Pseudo labeling params
-METRIC_THRESHOLD=0.25
+METRIC_THRESHOLD=0.4
 CLASS_THRESHOLD=0.5
 EMA_UPDATE=20
-EMA_KEEP_RATE=0.9996
+EMA_KEEP_RATE=0.9980
 METRIC_USE="static"
 METRIC_OFFSET=0.05
+LOSS_WEIGHTING=1.5
  
 
 # Define lists of weights and output directories
 TRAIN_WEIGHTS=(
-    "outputs/m2f/baseline/02_continued_01/pre_training_best_model.pth"
-    #"outputs/New_DS_Baseline/TEST_2/best_model.pth"
-    #"outputs/New_DS_Baseline/TEST_3/best_model.pth"
+    "outputs/m2f/baseline/02/pre_training_best_model.pth"
+    #""
+    #""
 )
 
 # burn in student weights
-BURN_IN_WEIGHTS="outputs/m2f/burn_in_025/02_continued_02/burn_in_best_model.pth"
+BURN_IN_WEIGHTS="outputs/m2f/040_bi_w1_5/02/burn_in_best_model.pth"
 
 TRAIN_DATASET="('jersey_train',)"
 VAL_DATASET="('jersey_val',)"
 
 TEST_WEIGHTS=(
-    "outputs/m2f/dist_025/02/distillation_best_model.pth"
+    ""
 
 )
 TEST_DATASET="('jersey_test',)"
 
 OUTPUT_DIRS=(
-    "outputs/m2f/dist_025/02"
+    "outputs/m2f/040_ema_9980/02"
 )
 
 ###############################################################################

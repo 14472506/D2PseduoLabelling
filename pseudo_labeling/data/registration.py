@@ -5,6 +5,43 @@ Detials
 from detectron2.data.datasets import register_coco_instances
 
 # functions
+# cityscapes
+def register_unlabeled_cityscapes():
+    register_coco_instances("unlabeled_data", {},
+                            "datasets/cityscapes/annotations/cityscapes_10perc_unlabelled.json",
+                            "datasets/cityscapes"
+                            )
+
+def register_train_cityscapes(train_percentage):
+    """
+    Detials
+    """
+    register_coco_instances("cityscapes_train", {}, 
+                            "datasets/cityscapes/annotations/cityscapes_10perc_labelled.json",
+                            "datasets/cityscapes")
+
+    register_coco_instances("cityscapes_val", {}, 
+                            "datasets/cityscapes/annotations/cityscapes_val.json",
+                            "datasets/cityscapes")
+
+def register_val_cityscapes():
+    """
+    Detials
+    """
+    register_coco_instances("cityscapes_val", {}, 
+                            "datasets/cityscapes/annotations/cityscapes_val.json",
+                            "datasets/cityscapes")
+
+def register_test_cityscapes():
+    """
+    Detials
+    """
+    register_coco_instances("cityscapes_test", {}, 
+                            "datasets/cityscapes/annotations/instancesonly_filtered_gtFine_val.json",
+                            "datasets/cityscapes")
+
+
+# Other
 def register_unlabeled():
     """
     Details

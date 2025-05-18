@@ -3,8 +3,8 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=16G
-#SBATCH --time=24:00:00
-#SBATCH --output=sbatch_logs/m2f_dist_025_01_continued_03_%j.log
+#SBATCH --time=48:00:00
+#SBATCH --output=sbatch_logs/cityscapes_gd_Distillation_continued_05_%j.log
 #SBATCH --no-requeue
 
 # Load required modules (if any)
@@ -15,10 +15,10 @@ docker build -t brhurst:latest .
 #docker load -i setup/brhurst.tar
 
 # Run docker container
-docker run --rm --device /dev/nvidia0:/dev/nvidia0 --device /dev/nvidiactl:/dev/nvidiactl --device /dev/nvidia-uvm:/dev/nvidia-uvm -v $(pwd):/workspace brhurst:latest bash -c '
+docker run --gpus all -v $(pwd):/workspace brhurst:latest bash -c '
 # Activate conda environment and run the commands
 source activate detectron2 && \
-yes | pip uninstall detectron2 && \
+# yes | pip uninstall detectron2 && \
 cd /workspace/detectron2 && \
 python -m pip install -e . && \
 cd /workspace && \
@@ -37,4 +37,6 @@ sh make.sh && \
 cd ../../../../ && \
 pip uninstall numpy -y && \
 pip install numpy==1.26.4 && \
-bash configs/pseudo_labeling/bash_scripts/m2f/m2f_pseudo_labeling_4.bash'
+configs/pseudo_labeling/bash_scripts/guid_dist/guid_dist_pseudo_labeling_1.bash'
+# bash configs/pseudo_labeling/bash_scripts/guid_dist/guid_dist_pseudo_labeling_1.bash
+# bash configs/pseudo_labeling/bash_scripts/m2f/m2f_pseudo_labeling_1.bash
